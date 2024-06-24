@@ -1,6 +1,13 @@
 import influx_config
 from influxdb_client import InfluxDBClient
 
+# Create the file influx_config.py with the following content:
+# # InfluxDB connection
+# URL = "http://influxdb:8086"
+# ORG = "swinburne"
+# TOKEN = "<read only token>"
+
+
 influx_client = InfluxDBClient(
     url=influx_config.URL,
     org=influx_config.ORG,
