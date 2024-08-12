@@ -1,0 +1,2 @@
+influxdb-client==1.37.0
+pyslurm
