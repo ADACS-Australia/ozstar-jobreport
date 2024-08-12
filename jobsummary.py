@@ -1,4 +1,4 @@
-from sacct import call_sacct
+from slurm_stats import get_slurm_stats
 from lustre import get_summary, print_lustre_summary
 from memory import get_max_mem, get_req_mem, print_mem_summary
 from cpu import get_avg_cpu, print_cpu_summary
@@ -9,8 +9,8 @@ import argparse
 
 
 def summary(job_id):
-    # Call sacct to get stats
-    saact_data = call_sacct(job_id)
+    # Call pyslurm to get stats
+    pyslurm_data = get_slurm_stats(job_id)
 
     # Get the Lustre summary
     summary = get_summary(job_id)
@@ -20,7 +20,7 @@ def summary(job_id):
     print()
 
     max_mem = get_max_mem(job_id)
-    req_mem = get_req_mem(saact_data)
+    req_mem = pyslurm_data["req_mem"]
     print_mem_summary(max_mem, req_mem)
 
     # Get the average CPU usage
@@ -30,7 +30,7 @@ def summary(job_id):
 
     # Print time summary
     print()
-    print_time_summary(saact_data)
+    print_time_summary(pyslurm_data)
 
     # Print warnings
     print()
