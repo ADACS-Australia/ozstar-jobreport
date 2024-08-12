@@ -1,6 +1,6 @@
 from slurm_stats import get_slurm_stats
 from lustre import get_summary, print_lustre_summary
-from memory import get_max_mem, get_req_mem, print_mem_summary
+from memory import get_max_mem, print_mem_summary
 from cpu import get_avg_cpu, print_cpu_summary
 from runtime import print_time_summary
 from warn import print_warnings
@@ -19,7 +19,12 @@ def summary(job_id):
     print_lustre_summary(summary)
     print()
 
-    max_mem = get_max_mem(job_id)
+    if pyslurm_data["state"] == "RUNNING":
+        # Use live data from InfluxDB when running
+        max_mem = get_max_mem(job_id)
+    else:
+        max_mem = pyslurm_data["max_mem"]
+
     req_mem = pyslurm_data["req_mem"]
     print_mem_summary(max_mem, req_mem)
 
@@ -50,11 +55,12 @@ def main():
     print()
 
     # Set a timeout to prevent jobs from hanging
-    try:
-        with Timeout(seconds=30):
-            summary(args.job_id)
-    except Exception as e:
-        print("Job summary could not be generated (Read timed out)")
+    summary(args.job_id)
+    # try:
+    #     with Timeout(seconds=30):
+    #         summary(args.job_id)
+    # except Exception as e:
+    #     print("Job summary could not be generated (Read timed out)")
 
 
 if __name__ == "__main__":

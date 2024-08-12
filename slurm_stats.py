@@ -5,45 +5,58 @@ def get_slurm_stats(job_id):
     Call pyslurm to get stats
     """
 
-    job = get_job(job_id)
+    unique_id = get_unique_id(job_id)
+    db = get_db_data(unique_id)
 
-    if job["mem_per_cpu"]:
-        cpus_per_node = job["num_cpus"] / job["num_nodes"]
-        req_mem = job["pn_min_memory"] * cpus_per_node
-    else:
-        req_mem = job["pn_min_memory"] * job["num_nodes"]
-
-    # Requested memory per node, converted from MB to B
-    req_mem = req_mem * 1024**2
-    req_nodes = job["num_nodes"]
-    elapsed = job["run_time_str"]
-    time_limit = job["time_limit_str"]
+    if db.state == "RUNNING":
+        submit = get_submit_data(unique_id)
 
     data = {
-        "req_mem": req_mem,
-        "req_nodes": req_nodes,
-        "elapsed": elapsed,
-        "time_limit": time_limit,
+        "state": db.state,
+        "req_mem": req_mem_bytes(db),
+        "max_mem": max_mem_bytes(db),
+        "elapsed": db.elapsed_time,
+        "time_limit": db.time_limit*60, # convert minutes to seconds !TODO: check for divide by zero
     }
 
     return data
 
-def get_job(job_id):
+def get_unique_id(job_id):
     """
-    Get the job dict using the array job ID and task ID
-    If the unique ID is provided, this will also work
+    Get the unique ID of the job using the array job ID and task ID
+    If the unique ID is provided, this does nothing
+    """
+    if "_" not in job_id and job_id.isdigit():
+        return int(job_id)
+
+    # Convert the array ID to the unique job ID
+    array_id, task_id = job_id.split("_")
+    unique_id = int(array_id) + int(task_id)
+
+    return unique_id
+
+def get_submit_data(unique_id):
+    """
+    Get the job submit dict using the unique ID
     """
     jobs = pyslurm.job().get()
+    return jobs[unique_id]
 
-    # Input job_id is given as ArrayJobId_ArrayTaskId
+def get_db_data(unique_id):
+    """
+    Get the job data from the database using the unique ID
+    """
+    return pyslurm.db.Job.load(unique_id)
 
-    # Job is not an array:
-    if "_" not in job_id:
-        return jobs[int(job_id)]
-    else:
-        array_id, task_id = job_id.split("_")
-        # Find the job with the matching ArrayJobId
-        for i in jobs:
-            job = jobs[i]
-            if job["array_job_id"] == int(array_id) and job["array_task_id"] == int(task_id):
-                return job
+def req_mem_bytes(db):
+    """
+    Get the requested memory per node in bytes from the DB
+    """
+
+    return (db.memory / db.num_nodes) * 1024**2 # convert MB to B
+
+def max_mem_bytes(db):
+    """
+    Get the max memory usage of any node in the job in bytes
+    """
+    return db.stats.max_resident_memory

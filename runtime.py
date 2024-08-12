@@ -15,26 +15,27 @@ def time_to_seconds(time_string):
         + int(seconds)
     )
 
+def seconds_to_str(seconds):
+    days = seconds // (24 * 60 * 60)
+    seconds = seconds % (24 * 60 * 60)
+    hours = seconds // (60 * 60)
+    seconds = seconds % (60 * 60)
+    minutes = seconds // 60
+    seconds = seconds % 60
+    return f"{days}-{hours:02d}:{minutes:02d}:{seconds:02d}"
+
 
 def print_time_summary(sacct_data):
     """
     Print a summary of the elapsed and requested time
     """
 
-    limit_string = sacct_data["time_limit"]
-    elapsed_string = sacct_data["elapsed"]
-
-    # If the limit has days ("-" in the string) then ensure that the elapsed
-    # time has days or has padded spaces
-    if "-" in limit_string:
-        if "-" in elapsed_string:
-            elapsed_string = elapsed_string.rjust(len(limit_string))
-        else:
-            elapsed_string = elapsed_string.rjust(len(limit_string), " ")
+    limit = sacct_data["time_limit"]
+    elapsed = sacct_data["elapsed"]
 
     # Fraction of time used
-    frac = time_to_seconds(elapsed_string) / time_to_seconds(limit_string)
+    frac = elapsed / limit
 
     print("Time:")
-    indentprint(f"Requested: {limit_string}")
-    indentprint(f"Elapsed:   {elapsed_string} ({100*frac:.1f}%)")
+    indentprint(f"Requested: {seconds_to_str(limit)}")
+    indentprint(f"Elapsed:   {seconds_to_str(elapsed)} ({100*frac:.1f}%)")
