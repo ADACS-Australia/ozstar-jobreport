@@ -1,4 +1,4 @@
-from slurm_stats import get_slurm_stats
+from slurm_stats import get_slurm_stats, get_stdout_file
 from lustre import get_summary, print_lustre_summary
 from memory import get_max_mem, print_mem_summary
 from cpu import get_avg_cpu, print_cpu_summary
@@ -6,6 +6,7 @@ from runtime import print_time_summary
 from warn import print_warnings
 from utils import Timeout
 import argparse
+import sys
 
 
 def summary(job_id):
@@ -50,17 +51,40 @@ def main():
         description="Print out a summary of the job", prog="jobsummary"
     )
     parser.add_argument("job_id", type=str, help="Job ID")
+    parser.add_argument("--epilog", action="store_true", help="Append to the job's stdout file in Slurm epilog")
+    parser.add_argument("--timeout", type=int, default=0, help="Timeout in seconds for the job summary")
     args = parser.parse_args()
 
-    print()
+    if args.epilog:
+        stdout_file = get_stdout_file(args.job_id)
 
-    # Set a timeout to prevent jobs from hanging
-    summary(args.job_id)
-    # try:
-    #     with Timeout(seconds=30):
-    #         summary(args.job_id)
-    # except Exception as e:
-    #     print("Job summary could not be generated (Read timed out)")
+        # Check if the stdout file exists and job has not finished yet
+        if stdout_file is None:
+            print("Could not get the stdout file for this job, job may have already finished")
+            return
+
+        # Check for write permissions to the file
+        try:
+            with open(stdout_file, "a") as f:
+                pass
+        except PermissionError:
+            print(f"Permission denied to write to {stdout_file}")
+            return
+
+        print(f"Appending to file for job {args.job_id}")
+
+        sys.stdout = open(stdout_file, "a")
+        print()
+
+    if args.timeout > 0:
+        try:
+            with Timeout(seconds=args.timeout):
+                summary(args.job_id)
+        except Exception as e:
+            print(f"Job summary could not be generated ({e})")
+
+    else:
+        summary(args.job_id)
 
 
 if __name__ == "__main__":

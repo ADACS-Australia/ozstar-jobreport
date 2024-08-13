@@ -8,7 +8,7 @@ def get_slurm_stats(job_id):
     unique_id = get_unique_id(job_id)
     db = get_db_data(unique_id)
 
-    if db.state == "RUNNING":
+    if is_running(db=db):
         submit = get_submit_data(unique_id)
 
     data = {
@@ -72,3 +72,34 @@ def time_limit_seconds(db):
     Get the time limit in seconds
     """
     return db.time_limit*60 # convert minutes to seconds
+
+def is_running(job_id=None, db=None):
+    """
+    Check if the job is running
+    """
+    try:
+        if db is None:
+            if job_id is None:
+                raise ValueError("Either job_id or db must be provided")
+            unique_id = get_unique_id(job_id)
+            db = get_db_data(unique_id)
+
+        if db.state == "RUNNING":
+            return True
+    except KeyError:
+        return False
+
+    return False
+
+def get_stdout_file(job_id):
+    """
+    Get the path to the stdout file for the job
+    """
+    unique_id = get_unique_id(job_id)
+    db = get_db_data(unique_id)
+
+    if is_running(db=db):
+        submit = get_submit_data(unique_id)
+        return submit["std_out"]
+
+    return None
