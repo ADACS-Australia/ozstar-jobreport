@@ -18,7 +18,7 @@ def summary(job_id):
     print_lustre_summary(summary)
     print()
 
-    max_mem = get_max_mem(job_id)
+    max_mem = get_max_mem(job_id, pyslurm_data)
     req_mem = pyslurm_data["req_mem"]
     print_mem_summary(max_mem, req_mem)
 

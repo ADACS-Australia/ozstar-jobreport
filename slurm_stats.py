@@ -15,7 +15,7 @@ def get_slurm_stats(job_id):
     for step in db.steps.values():
         user_cpu += step.stats.user_cpu_time
 
-    avg_cpu = user_cpu / db.stats.elapsed_cpu_time
+    avg_cpu = user_cpu / db.stats.elapsed_cpu_time * 100
 
     data = {
         "state": db.state,
