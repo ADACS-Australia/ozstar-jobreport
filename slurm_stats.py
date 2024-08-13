@@ -15,8 +15,8 @@ def get_slurm_stats(job_id):
         "state": db.state,
         "req_mem": req_mem_bytes(db),
         "max_mem": max_mem_bytes(db),
-        "elapsed": db.elapsed_time,
-        "time_limit": db.time_limit*60, # convert minutes to seconds !TODO: check for divide by zero
+        "elapsed": elapsed_time_seconds(db),
+        "time_limit": time_limit_seconds(db)
     }
 
     return data
@@ -60,3 +60,15 @@ def max_mem_bytes(db):
     Get the max memory usage of any node in the job in bytes
     """
     return db.stats.max_resident_memory
+
+def elapsed_time_seconds(db):
+    """
+    Get the elapsed time in seconds
+    """
+    return db.elapsed_time
+
+def time_limit_seconds(db):
+    """
+    Get the time limit in seconds
+    """
+    return db.time_limit*60 # convert minutes to seconds
