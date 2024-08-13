@@ -20,12 +20,7 @@ def summary(job_id):
     print_lustre_summary(summary)
     print()
 
-    if pyslurm_data["state"] == "RUNNING":
-        # Use live data from InfluxDB when running
-        max_mem = get_max_mem(job_id)
-    else:
-        max_mem = pyslurm_data["max_mem"]
-
+    max_mem = get_max_mem(job_id)
     req_mem = pyslurm_data["req_mem"]
     print_mem_summary(max_mem, req_mem)
 

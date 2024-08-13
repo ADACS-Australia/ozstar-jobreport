@@ -4,10 +4,15 @@ from utils import humansize, bytesize, indentprint
 SEARCH_WINDOW = "7d"
 
 
-def get_max_mem(job_id):
+def get_max_mem(job_id, pyslurm_data):
     """
     Query Influx for slurm memory stats
     """
+
+    # To reduce load on InfluxDB server, only query it for actively running jobs
+    # Otherwise, use the max memory from the Slurm DB (which is only available after job completion)
+    if pyslurm_data["state"] != "RUNNING":
+        return pyslurm_data["max_mem"]
 
     # Query for the max memory usage of any node in the job
     job_query = f"""
