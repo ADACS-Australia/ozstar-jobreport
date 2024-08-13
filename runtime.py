@@ -25,13 +25,14 @@ def seconds_to_str(seconds):
     return f"{days}-{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
-def print_time_summary(sacct_data):
+def print_time_summary(data):
     """
     Print a summary of the elapsed and requested time
     """
 
-    limit = sacct_data["time_limit"]
-    elapsed = sacct_data["elapsed"]
+    limit = data["time_limit"]
+    elapsed = data["elapsed"]
+    state = data["state"]
 
     # Fraction of time used
     frac = elapsed / limit
@@ -39,3 +40,4 @@ def print_time_summary(sacct_data):
     print("Time:")
     indentprint(f"Requested: {seconds_to_str(limit)}")
     indentprint(f"Elapsed:   {seconds_to_str(elapsed)} ({100*frac:.1f}%)")
+    indentprint(f"State:     {state}")
