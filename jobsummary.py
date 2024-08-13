@@ -4,7 +4,7 @@ from memory import get_max_mem, print_mem_summary
 from cpu import get_avg_cpu, print_cpu_summary
 from runtime import print_time_summary
 from warn import print_warnings
-from utils import Timeout
+from utils import Timeout, redirect_stdout_to_file
 import argparse
 import sys
 
@@ -57,23 +57,10 @@ def main():
 
     if args.epilog:
         stdout_file = get_stdout_file(args.job_id)
+        if stdout_file is not None:
+            redirect_stdout_to_file(stdout_file)
 
-        # Check if the stdout file exists and job has not finished yet
-        if stdout_file is None:
-            print("Could not get the stdout file for this job, job may have already finished")
-            return
-
-        # Check for write permissions to the file
-        try:
-            with open(stdout_file, "a") as f:
-                pass
-        except PermissionError:
-            print(f"Permission denied to write to {stdout_file}")
-            return
-
-        print(f"Appending to file for job {args.job_id}")
-
-        sys.stdout = open(stdout_file, "a")
+        # Add a newline to separate the summary from the rest of the output
         print()
 
     if args.timeout > 0:
@@ -83,6 +70,7 @@ def main():
         except Exception as e:
             print(f"Job summary could not be generated ({e})")
 
+    # If timeout is zero, run directly for easier debugging
     else:
         summary(args.job_id)
 

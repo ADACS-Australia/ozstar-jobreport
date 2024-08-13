@@ -1,5 +1,6 @@
 import subprocess
 import signal
+import sys
 
 suffixes = ["", "K", "M", "G", "T", "P"]
 
@@ -52,3 +53,18 @@ class Timeout:
 
     def __exit__(self, type, value, traceback):
         signal.alarm(0)
+
+def redirect_stdout_to_file(file):
+    """
+    Redirect stdout to a file
+    """
+    # Check for write permissions to the file
+    try:
+        with open(file, "a") as f:
+            pass
+    except PermissionError:
+        print(f"Permission denied to write to {file}")
+        return
+
+    print(f"Appending to file: {file}")
+    sys.stdout = open(file, "a")

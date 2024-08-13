@@ -101,5 +101,7 @@ def get_stdout_file(job_id):
     if is_running(db=db):
         submit = get_submit_data(unique_id)
         return submit["std_out"]
+    else:
+        print("Job is not running, could not get stdout file")
 
     return None
