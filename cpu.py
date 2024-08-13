@@ -4,10 +4,13 @@ from utils import indentprint
 SEARCH_WINDOW = "7d"
 
 
-def get_avg_cpu(job_id):
+def get_avg_cpu(job_id, pyslurm_data):
     """
     Query Influx for CPU usage and calculate the average
     """
+
+    if pyslurm_data["state"] != "RUNNING":
+        return pyslurm_data["avg_cpu"]
 
     job_query = f"""
     from(bucket: "jobmon-stats")

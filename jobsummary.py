@@ -6,8 +6,6 @@ from runtime import print_time_summary
 from warn import print_warnings
 from utils import Timeout, redirect_stdout_to_file
 import argparse
-import sys
-
 
 def summary(job_id):
     # Call pyslurm to get stats
@@ -26,7 +24,7 @@ def summary(job_id):
 
     # Get the average CPU usage
     print()
-    avg_cpu = get_avg_cpu(job_id)
+    avg_cpu = get_avg_cpu(job_id, pyslurm_data)
     print_cpu_summary(avg_cpu)
 
     # Print time summary

@@ -11,12 +11,19 @@ def get_slurm_stats(job_id):
     if is_running(db=db):
         submit = get_submit_data(unique_id)
 
+    user_cpu = 0
+    for step in db.steps.values():
+        user_cpu += step.stats.user_cpu_time
+
+    avg_cpu = user_cpu / db.stats.elapsed_cpu_time
+
     data = {
         "state": db.state,
         "req_mem": req_mem_bytes(db),
         "max_mem": max_mem_bytes(db),
         "elapsed": elapsed_time_seconds(db),
-        "time_limit": time_limit_seconds(db)
+        "time_limit": time_limit_seconds(db),
+        "avg_cpu": avg_cpu,
     }
 
     return data

@@ -1,5 +1,5 @@
 from influx import query
-from utils import humansize, bytesize, indentprint
+from utils import humansize, indentprint
 
 SEARCH_WINDOW = "7d"
 
