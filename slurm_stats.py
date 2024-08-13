@@ -29,7 +29,17 @@ def get_unique_id(job_id):
 
     # Convert the array ID to the unique job ID
     array_id, task_id = job_id.split("_")
-    unique_id = int(array_id) + int(task_id)
+
+    db_filter = pyslurm.db.JobFilter(ids=[str(array_id)])
+    jobs = pyslurm.db.Jobs.load(db_filter)
+
+    unique_id = None
+    for job in jobs.values():
+        if job.array_task_id == int(task_id):
+            unique_id = job.id
+
+    if unique_id is None:
+        raise KeyError(f"Job ID {job_id} not found")
 
     return unique_id
 
