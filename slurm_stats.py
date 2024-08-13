@@ -8,9 +8,6 @@ def get_slurm_stats(job_id):
     unique_id = get_unique_id(job_id)
     db = get_db_data(unique_id)
 
-    if is_running(db=db):
-        submit = get_submit_data(unique_id)
-
     data = {
         "state": db.state,
         "req_mem": req_mem_bytes(db),
