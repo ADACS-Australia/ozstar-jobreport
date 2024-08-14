@@ -61,6 +61,10 @@ def req_mem_bytes(db):
     Get the requested memory per node in bytes from the DB
     """
 
+    # Num nodes will be 0 if job has not started
+    if db.num_nodes == 0:
+        return 0
+
     return (db.memory / db.num_nodes) * 1024**2 # convert MB to B
 
 def max_mem_bytes(db):

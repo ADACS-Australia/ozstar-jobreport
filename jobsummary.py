@@ -11,6 +11,11 @@ def summary(job_id):
     # Call pyslurm to get stats
     pyslurm_data = get_slurm_stats(job_id)
 
+    # If job has not yet started, print a message and return
+    if pyslurm_data["state"] == "PENDING":
+        print("Job has not yet started")
+        return
+
     # Get the Lustre summary
     summary = get_summary(job_id)
 
