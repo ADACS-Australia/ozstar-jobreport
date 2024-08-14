@@ -73,7 +73,10 @@ def elapsed_time_seconds(db):
     """
     Get the elapsed time in seconds
     """
-    return db.elapsed_time
+    if db.elapsed_time is not None:
+        return db.elapsed_time
+    else:
+        return 0
 
 def time_limit_seconds(db):
     """
