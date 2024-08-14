@@ -102,23 +102,6 @@ def get_user_cpu_time(db):
 
     return user_cpu / db.stats.elapsed_cpu_time * 100
 
-def is_running(job_id=None, db=None):
-    """
-    Check if the job is running
-    """
-    try:
-        if db is None:
-            if job_id is None:
-                raise ValueError("Either job_id or db must be provided")
-            unique_id = get_unique_id(job_id)
-            db = get_db_data(unique_id)
-
-        if db.state == "RUNNING":
-            return True
-    except KeyError:
-        return False
-
-    return False
 
 def get_stdout_file(job_id):
     """
@@ -127,10 +110,13 @@ def get_stdout_file(job_id):
     unique_id = get_unique_id(job_id)
     db = get_db_data(unique_id)
 
-    if is_running(db=db):
-        submit = get_submit_data(unique_id)
-        return submit["std_out"]
+    if db.state == "PENDING":
+        print("Job has not started, could not get stdout file")
     else:
-        print("Job is not running, could not get stdout file")
+        try:
+            submit = get_submit_data(unique_id)
+            return submit["std_out"]
+        except KeyError:
+            print("Job finished too long ago, could not get stdout file")
 
     return None
