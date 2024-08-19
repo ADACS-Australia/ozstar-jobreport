@@ -33,9 +33,19 @@ def main():
         help="Append to the job's stdout file in Slurm epilog",
     )
     parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Allow debug output (e.g. stack traces) to be printed",
+    )
+    parser.add_argument(
         "--timeout", type=int, default=30, help="Timeout in seconds for the job summary"
     )
     args = parser.parse_args()
+
+    if args.debug:
+        timeout = 0
+    else:
+        timeout = args.timeout
 
     # Defaults
     exit_code = 1
@@ -43,7 +53,7 @@ def main():
     job_summary = None
 
     # Run the job summary with a timeout
-    if args.timeout > 0:
+    if timeout > 0:
         try:
             with Timeout(seconds=args.timeout):
                 job_summary = get_summary(args.job_id)
