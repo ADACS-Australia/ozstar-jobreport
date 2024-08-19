@@ -1,23 +1,103 @@
-import influx_config
 from influxdb_client import InfluxDBClient
 
-# Create the file influx_config.py with the following content:
-# # InfluxDB connection
-# URL = "http://influxdb:8086"
-# ORG = "swinburne"
-# TOKEN = "<read only token>"
 
+class InfluxQuery:
+    # # InfluxDB connection
+    # URL = "http://influxdb:8086"
+    # ORG = "swinburne"
+    # TOKEN = "<read only token>"
 
-influx_client = InfluxDBClient(
-    url=influx_config.URL,
-    org=influx_config.ORG,
-    token=influx_config.TOKEN,
-    timeout="10s",
-    retries=3,
-)
+    def __init__(self, url, org, token, timeout="10s", retries=3, search_window="7d"):
+        self.url = url
+        self.org = org
+        self.token = token
+        influx_client = InfluxDBClient(
+            url=self.url,
+            org=self.org,
+            token=self.token,
+            timeout=timeout,
+            retries=retries,
+        )
+        self.influx_query_api = influx_client.query_api()
+        self.search_window = search_window
 
-influx_query_api = influx_client.query_api()
+    def query(self, job_query):
+        return self.influx_query_api.query(job_query, org=self.org)
 
+    def get_max_mem(self, job_id):
+        """
+        Query Influx for slurm memory stats
+        """
 
-def query(query):
-    return influx_query_api.query(query, org=influx_config.ORG)
+        # Query for the max memory usage of any node in the job
+        job_query = f"""
+        from(bucket: "jobmon-stats")
+        |> range(start: -{self.search_window})
+        |> filter(fn: (r) => r["_measurement"] == "job_max_memory")
+        |> filter(fn: (r) => r["job_id"] == "{job_id}")
+        |> last()
+        """
+
+        job_results = self.query(job_query)
+
+        if len(job_results) > 0:
+            # Get the max value and convert MB to B
+            return job_results[0].records[0].get_value() * 1024**2
+        else:
+            return None
+
+    def get_lustre_jobstats(self, job_id):
+        """
+        Query Influx for the Lustre jobstats
+        """
+
+        job_query = f"""
+        from(bucket: "lustre-jobstats")
+        |> range(start: -{self.search_window})
+        |> filter(fn: (r) => r["_measurement"] == "lustre")
+        |> filter(fn: (r) => r["job"] == "{job_id}")
+        |> last()
+        """
+
+        job_results = self.query(job_query)
+
+        data = {}
+
+        for table in job_results:
+            fs = table.records[0]["fs"]
+            server = table.records[0]["server"]
+            field = table.records[0].get_field()
+
+            if fs not in data:
+                data[fs] = {}
+            if server not in data[fs]:
+                data[fs][server] = {}
+            if field not in data[fs][server]:
+                data[fs][server][field] = {"ts": [], "value": []}
+
+            for record in table:
+                ts = int(record.get_time().timestamp())
+                data[fs][server][field]["ts"] += [ts]
+                data[fs][server][field]["value"] += [record.get_value()]
+
+        return data
+
+    def get_avg_cpu(self, job_id):
+        """
+        Query Influx for CPU usage and calculate the average
+        """
+
+        job_query = f"""
+        from(bucket: "jobmon-stats")
+        |> range(start: -{self.search_window})
+        |> filter(fn: (r) => r["_measurement"] == "average_cpu_usage")
+        |> filter(fn: (r) => r["job_id"] == "{job_id}")
+        |> mean()
+        """
+
+        job_results = self.query(job_query)
+
+        if len(job_results) > 0:
+            return job_results[0].records[0].get_value()
+        else:
+            return None

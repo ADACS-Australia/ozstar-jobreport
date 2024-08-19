@@ -1,20 +1,19 @@
 import sys
 import os
-from utils import cmd
-from jobsummary import summary
+import pyslurm
+
+from jobsummary import get_summary
 from tqdm import tqdm
 
 # Get a list of jobs from squeue
-output = cmd("squeue -o '%i' -h")
-test_jobs = output.splitlines()
+test_jobs = pyslurm.Jobs.load()
 
 for job in tqdm(test_jobs, desc="Testing jobs"):
-
     # Suppress print
     sys.stdout = open(os.devnull, "w")
 
     # Test job
-    summary(job)
+    print(get_summary(job))
 
     # Restore print
     sys.stdout = sys.__stdout__
