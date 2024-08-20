@@ -1,0 +1,5 @@
+[influx2]
+url = "my-url"
+org = "my-org"
+token = "my-token"
+timeout = 10000

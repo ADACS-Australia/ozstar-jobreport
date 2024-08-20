@@ -7,22 +7,27 @@ class InfluxQuery:
     # ORG = "swinburne"
     # TOKEN = "<read only token>"
 
-    def __init__(self, url, org, token, timeout="10s", retries=3, search_window="7d"):
-        self.url = url
-        self.org = org
-        self.token = token
-        influx_client = InfluxDBClient(
-            url=self.url,
-            org=self.org,
-            token=self.token,
-            timeout=timeout,
-            retries=retries,
+    def __init__(self, config_file, retries=3, search_window="7d"):
+        self.influx_client = InfluxDBClient.from_config_file(
+            config_file, retries=retries
         )
-        self.influx_query_api = influx_client.query_api()
+        self.health_check()
+        self.influx_query_api = self.influx_client.query_api()
+        self.query_check()
         self.search_window = search_window
 
+    def health_check(self):
+        health = self.influx_client.health()
+        if health.status != "pass":
+            raise Exception("Warning: could not connect to InfluxDB server")
+
+    def query_check(self):
+        # Perform a simple query to validate the organization
+        query = 'from(bucket: "_internal") |> range(start: -1m) |> limit(n:1)'
+        self.influx_query_api.query(query)
+
     def query(self, job_query):
-        return self.influx_query_api.query(job_query, org=self.org)
+        return self.influx_query_api.query(job_query)
 
     def get_max_mem(self, job_id):
         """

@@ -1,3 +1,2 @@
-
-INFLUXDB.conf
+conf.influxdb.toml
 __pycache__

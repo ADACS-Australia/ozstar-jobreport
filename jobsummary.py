@@ -1,27 +1,55 @@
+import os
 import sys
 import argparse
-import os
+import traceback
 
 from utils import Timeout
 from summary import JobSummary
 from influx import InfluxQuery
 
 
-def get_summary(job_id):
-    influxdb_url = os.environ.get("INFLUXDB_URL", None)
-    influxdb_org = os.environ.get("INFLUXDB_ORG", None)
-    influxdb_token = os.environ.get("INFLUXDB_TOKEN", None)
-
-    if influxdb_url is None or influxdb_org is None or influxdb_token is None:
-        query = None
+def get_summary(job_id, config_file="conf.influxdb.toml", debug=False):
+    query = None
+    # Initialize InfluxQuery if the config file exists
+    if os.path.exists(config_file):
+        try:
+            query = InfluxQuery(config_file=config_file, retries=3)
+        except Exception:
+            print("Warning: InfluxQuery could not be initialized")
+            if debug:
+                print(traceback.format_exc())
     else:
-        query = InfluxQuery(influxdb_url, influxdb_org, influxdb_token)
+        print(
+            f"Warning: InfluxDB configuration file '{config_file}' does not exist"
+        )
 
     job_summary = JobSummary(job_id, query)
     return job_summary
 
 
-def main():
+def main(job_id, epilog=False, config_file="conf.influxdb.toml", debug=False):
+    stdout_file = None
+
+    # Create job summary
+    job_summary = get_summary(job_id, config_file, debug)
+
+    # Get output file if epilog is enabled
+    if epilog:
+        stdout_file = job_summary.get_stdout_file(debug)
+
+    # Print/write the summary
+    if job_summary is not None:
+        if stdout_file is not None:
+            try:
+                with open(stdout_file, "a") as file:
+                    file.write(str(job_summary) + "\n")
+            except PermissionError:
+                print(f"Error: permission denied to write to '{stdout_file}'")
+        else:
+            print(job_summary)
+
+
+if __name__ == "__main__":
     # Get command line args
     parser = argparse.ArgumentParser(
         description="Print out a summary of the job", prog="jobsummary"
@@ -40,51 +68,23 @@ def main():
     parser.add_argument(
         "--timeout", type=int, default=30, help="Timeout in seconds for the job summary"
     )
+    parser.add_argument(
+        "--config-file",
+        type=str,
+        default="conf.influxdb.toml",
+        help="InfluxDB configuration file",
+    )
     args = parser.parse_args()
 
-    if args.debug:
-        timeout = 0
-    else:
-        timeout = args.timeout
+    # Handle exceptions at the top level
+    try:
+        # Ensure the code does not hang
+        with Timeout(int(args.timeout)):
+            main(args.job_id, args.epilog, args.config_file, args.debug)
 
-    # Defaults
-    exit_code = 1
-    stdout_file = None
-    job_summary = None
-
-    # Run the job summary with a timeout
-    if timeout > 0:
-        try:
-            with Timeout(seconds=args.timeout):
-                job_summary = get_summary(args.job_id)
-        except Exception as e:
-            print(f"Error: job summary could not be generated ({e})")
-
-    # If timeout is zero, run directly for easier debugging
-    else:
-        job_summary = get_summary(args.job_id)
-
-    # Get output file if epilog is enabled
-    if args.epilog:
-        stdout_file = job_summary.get_stdout_file()
-
-    # Print/write the summary
-    if job_summary is not None:
-        if stdout_file is not None:
-            try:
-                print(f"Appending to file: {stdout_file}")
-                with open(stdout_file, "a") as file:
-                    file.write(job_summary + "\n")
-                exit_code = 0
-            except PermissionError:
-                print(f"Permission denied to write to {stdout_file}")
-        else:
-            print(job_summary)
-            exit_code = 0
-
-    return exit_code
-
-
-if __name__ == "__main__":
-    exit_code = main()
-    sys.exit(exit_code)
+    # Print exception tracebacks if in debug mode
+    except Exception:
+        print("Error: job summary could not be generated")
+        if args.debug:
+            raise
+        sys.exit(1)

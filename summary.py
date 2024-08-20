@@ -1,3 +1,4 @@
+import traceback
 import pyslurm
 
 from tabulate import tabulate
@@ -168,7 +169,7 @@ class JobSummary:
 
         return unique_id
 
-    def get_stdout_file(self):
+    def get_stdout_file(self, debug=False):
         """
         Get the path to the stdout file for the job
         """
@@ -182,7 +183,9 @@ class JobSummary:
                 job = pyslurm.job().find_id(self.job_id)
                 stdout_file = job[0]["std_out"]
             except ValueError:
-                print("Warning: could not get stdout file")
+                print("Warning: could not get stdout file -- job may have finished too long ago")
+                if debug:
+                    print(traceback.format_exc())
 
         return stdout_file
 
