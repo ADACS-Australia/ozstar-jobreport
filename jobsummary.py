@@ -3,23 +3,25 @@ import sys
 import argparse
 import traceback
 
+from pathlib import Path
 from utils import Timeout
 from summary import JobSummary
 from influx import InfluxQuery
 
 
 def get_summary(job_id, config_file="conf.influxdb.toml", debug=False):
+    conf = Path(config_file)
     query = None
     # Initialize InfluxQuery if the config file exists
-    if os.path.exists(config_file):
+    if conf.exists():
         try:
-            query = InfluxQuery(config_file=config_file, retries=3)
+            query = InfluxQuery(config_file=conf, retries=3)
         except Exception:
             print("Warning: InfluxQuery could not be initialized")
             if debug:
                 print(traceback.format_exc())
     else:
-        print(f"Warning: InfluxDB configuration file '{config_file}' does not exist")
+        print(f"Warning: InfluxDB configuration file '{conf}' does not exist")
 
     job_summary = JobSummary(job_id, query)
     return job_summary
