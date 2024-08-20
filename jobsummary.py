@@ -56,19 +56,26 @@ if __name__ == "__main__":
     )
     parser.add_argument("job_id", type=str, help="Job ID")
     parser.add_argument(
+        "-e",
         "--epilog",
         action="store_true",
         help="Append to the job's stdout file in Slurm epilog",
     )
     parser.add_argument(
+        "-d",
         "--debug",
         action="store_true",
         help="Allow debug output (e.g. stack traces) to be printed",
     )
     parser.add_argument(
-        "--timeout", type=int, default=30, help="Timeout in seconds for the job summary"
+        "-t",
+        "--timeout",
+        type=int,
+        default=30,
+        help="Timeout in seconds for the job summary",
     )
     parser.add_argument(
+        "-c",
         "--config-file",
         type=str,
         default="conf.influxdb.toml",
