@@ -27,9 +27,9 @@ def percentage_bar(percentage, width=20, style=None):
     bar = int(percentage * width)
     if style == "arrow":
         bar = min(bar, width - 1)
-        return f"[{'-' * bar}>{' ' * (width - 1 - bar)}] {percentage:.1%}"
+        return f"[{'-' * bar}>{' ' * (width - 1 - bar)}] {percentage:5.1%}"
     else:
-        return f"[{'#' * bar}{' ' * (width - bar)}] {percentage:.1%}"
+        return f"[{'#' * bar}{' ' * (width - bar)}] {percentage:5.1%}"
 
 
 class Timeout:
