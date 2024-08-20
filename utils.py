@@ -22,6 +22,16 @@ def seconds_to_str(seconds):
     return f"{days}-{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
+def percentage_bar(percentage, width=20, style=None):
+    """Return a progress bar for a given percentage"""
+    bar = int(percentage * width)
+    if style == "arrow":
+        bar = min(bar, width - 1)
+        return f"[{'-' * bar}>{' ' * (width - 1 - bar)}] {percentage:.1%}"
+    else:
+        return f"[{'#' * bar}{' ' * (width - bar)}] {percentage:.1%}"
+
+
 class Timeout:
     def __init__(self, seconds=1, error_message="Timeout"):
         self.seconds = seconds

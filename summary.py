@@ -1,7 +1,7 @@
 import pyslurm
 
 from tabulate import tabulate
-from utils import humansize, seconds_to_str
+from utils import humansize, seconds_to_str, percentage_bar
 
 
 UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
@@ -26,6 +26,8 @@ class JobSummary:
 
         self.warnings = self.get_warnings()
         self.summary_data["warnings"] = self.warnings
+
+        self.heading_width = 14
 
     def __str__(self):
         return self.get_full_summary()
@@ -213,7 +215,7 @@ class JobSummary:
 
             table = tabulate(
                 table,
-                headers=["Path", "Total Read", "Total Write", "Total I/O Operations"],
+                headers=["Path", "Total Read", "Total Write", "Total IOPS"],
             )
             indent = 2 * " "
             lustre_string = indent + table.replace("\n", "\n" + indent)
@@ -230,21 +232,16 @@ class JobSummary:
         max_mem = self.summary_data["max_mem"]
         req_mem = self.summary_data["req_mem"]
 
-        lines = []
-
         if max_mem is None or req_mem is None:
-            lines.append("No data available")
+            line = "No data available"
         else:
-            lines.append(f"Requested: {humansize(req_mem)}")
-            lines.append(
-                f"Peak:      {humansize(max_mem)} ({100*max_mem/req_mem:.1f}%)"
+            line = (
+                percentage_bar(max_mem / req_mem)
+                + f" ({humansize(max_mem)} peak / {humansize(req_mem)})"
             )
 
-        indent = 2 * " "
-        header = ["Memory (RAM):"]
-        summary = "\n".join(header + [f"{indent}{line}" for line in lines])
-
-        return summary + "\n"
+        name = "Memory (RAM)"
+        return name.ljust(self.heading_width) + line
 
     def get_cpu_summary(self):
         """
@@ -254,13 +251,12 @@ class JobSummary:
         avg_cpu = self.summary_data["avg_cpu"]
 
         if avg_cpu is None:
-            cpu_string = "  No data available"
+            line = "No data available"
         else:
-            cpu_string = f"  Average CPU Usage: {avg_cpu:.1f}%"
+            line = percentage_bar(avg_cpu / 100) + " average"
 
-        summary = f"CPU:\n{cpu_string}"
-
-        return summary + "\n"
+        name = "CPU"
+        return name.ljust(self.heading_width) + line
 
     def get_time_summary(self):
         """
@@ -269,22 +265,17 @@ class JobSummary:
 
         elapsed_time = self.summary_data["elapsed_time"]
         time_limit = self.summary_data["time_limit"]
-        state = self.summary_data["state"]
-
-        lines = []
 
         if elapsed_time is None or time_limit is None:
-            lines.append("No data available")
+            line = "No data available"
         else:
-            lines.append(f"Requested: {seconds_to_str(time_limit)}")
-            lines.append(f"Elapsed:   {seconds_to_str(elapsed_time)}")
-            lines.append(f"State:     {state}")
+            line = (
+                percentage_bar(elapsed_time / time_limit, style="arrow")
+                + f" ({seconds_to_str(elapsed_time)} / {seconds_to_str(time_limit)})"
+            )
 
-        indent = 2 * " "
-        header = ["Time:"]
-        summary = "\n".join(header + [f"{indent}{line}" for line in lines])
-
-        return summary + "\n"
+        name = "Time"
+        return name.ljust(self.heading_width) + line
 
     def get_warnings_summary(self):
         """
@@ -307,32 +298,42 @@ class JobSummary:
         """
 
         summary_list = [
-            self.get_lustre_summary(),
             self.get_mem_summary(),
             self.get_cpu_summary(),
             self.get_time_summary(),
+            "",
+            self.get_lustre_summary(),
             self.get_warnings_summary(),
         ]
 
         summary = "\n".join(summary_list)
 
+        # Remove the last newline
+        summary = summary.strip("\n")
+
         lines = summary.split("\n")
 
         # add a title
-        title = f"Job Summary (Job ID: {self.job_id})"
+        title = f"Job Summary: {self.job_id} ({self.summary_data['state']})"
 
         # find longest line
         max_len = max(max([len(line) for line in lines]), len(title))
 
-        title_line = f"| {title.center(max_len)} |"
+        # top border line with embedded title
+        ndash = max_len - len(title)
+        ldashes = "-" * (ndash // 2)
+        rdashes = "-" * (ndash // 2)
+        if ndash % 2 == 1:
+            rdashes += "-"
+        title_line = "+" + ldashes + " " + title + " " + rdashes + "+"
 
-        # add a border
-        border = "+" + "-" * (max_len + 2) + "+"
+        # bottom border
+        bottom_border = "+" + "-" * (max_len + 2) + "+"
 
         summary = "\n".join(
-            [border, title_line, border]
+            [title_line]
             + [f"| {line.ljust(max_len)} |" for line in lines]
-            + [border]
+            + [bottom_border]
         )
 
         return summary
