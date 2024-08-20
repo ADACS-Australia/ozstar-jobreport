@@ -7,14 +7,16 @@ class InfluxQuery:
     # ORG = "swinburne"
     # TOKEN = "<read only token>"
 
-    def __init__(self, config_file, retries=3, search_window="7d"):
+    def __init__(self, config_file, retries=3, search_window="7d", bucket="jobmon-stats", lustre_bucket="lustre-jobstats"):
+        self.search_window = search_window
+        self.bucket = bucket
+        self.lustre_bucket = lustre_bucket
         self.influx_client = InfluxDBClient.from_config_file(
             config_file, retries=retries
         )
         self.health_check()
         self.influx_query_api = self.influx_client.query_api()
         self.query_check()
-        self.search_window = search_window
 
     def health_check(self):
         health = self.influx_client.health()
@@ -23,7 +25,7 @@ class InfluxQuery:
 
     def query_check(self):
         # Perform a simple query to validate the organization
-        query = 'from(bucket: "jobmon-stats") |> range(start: -1m) |> limit(n:1)'
+        query = f'from(bucket: "{self.bucket}") |> range(start: -1m) |> limit(n:1)'
         self.influx_query_api.query(query)
 
     def query(self, job_query):
@@ -36,7 +38,7 @@ class InfluxQuery:
 
         # Query for the max memory usage of any node in the job
         job_query = f"""
-        from(bucket: "jobmon-stats")
+        from(bucket: "{self.bucket}")
         |> range(start: -{self.search_window})
         |> filter(fn: (r) => r["_measurement"] == "job_max_memory")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
@@ -57,7 +59,7 @@ class InfluxQuery:
         """
 
         job_query = f"""
-        from(bucket: "lustre-jobstats")
+        from(bucket: "{self.lustre_bucket}")
         |> range(start: -{self.search_window})
         |> filter(fn: (r) => r["_measurement"] == "lustre")
         |> filter(fn: (r) => r["job"] == "{job_id}")
@@ -93,7 +95,7 @@ class InfluxQuery:
         """
 
         job_query = f"""
-        from(bucket: "jobmon-stats")
+        from(bucket: "{self.bucket}")
         |> range(start: -{self.search_window})
         |> filter(fn: (r) => r["_measurement"] == "average_cpu_usage")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
