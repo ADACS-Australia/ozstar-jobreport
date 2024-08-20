@@ -183,7 +183,9 @@ class JobSummary:
                 job = pyslurm.job().find_id(self.job_id)
                 stdout_file = job[0]["std_out"]
             except ValueError:
-                print("Warning: could not get stdout file -- job may have finished too long ago")
+                print(
+                    "Warning: could not get stdout file -- job may have finished too long ago"
+                )
                 if debug:
                     print(traceback.format_exc())
 

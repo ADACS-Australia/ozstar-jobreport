@@ -19,9 +19,7 @@ def get_summary(job_id, config_file="conf.influxdb.toml", debug=False):
             if debug:
                 print(traceback.format_exc())
     else:
-        print(
-            f"Warning: InfluxDB configuration file '{config_file}' does not exist"
-        )
+        print(f"Warning: InfluxDB configuration file '{config_file}' does not exist")
 
     job_summary = JobSummary(job_id, query)
     return job_summary

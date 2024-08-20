@@ -7,7 +7,14 @@ class InfluxQuery:
     # ORG = "swinburne"
     # TOKEN = "<read only token>"
 
-    def __init__(self, config_file, retries=3, search_window="7d", bucket="jobmon-stats", lustre_bucket="lustre-jobstats"):
+    def __init__(
+        self,
+        config_file,
+        retries=3,
+        search_window="7d",
+        bucket="jobmon-stats",
+        lustre_bucket="lustre-jobstats",
+    ):
         self.search_window = search_window
         self.bucket = bucket
         self.lustre_bucket = lustre_bucket
