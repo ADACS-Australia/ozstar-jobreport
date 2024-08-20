@@ -23,7 +23,7 @@ class InfluxQuery:
 
     def query_check(self):
         # Perform a simple query to validate the organization
-        query = 'from(bucket: "_internal") |> range(start: -1m) |> limit(n:1)'
+        query = 'from(bucket: "jobmon-stats") |> range(start: -1m) |> limit(n:1)'
         self.influx_query_api.query(query)
 
     def query(self, job_query):
