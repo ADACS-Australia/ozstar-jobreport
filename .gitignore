@@ -1,2 +1,3 @@
 conf.influxdb.toml
 __pycache__
+venv/
