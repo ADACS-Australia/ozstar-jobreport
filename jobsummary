@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# Emulate loading the python module
-LD_LIBRARY_PATH=/apps/modules/software/Python/3.11.3-GCCcore-12.3.0/lib:/apps/modules/software/OpenSSL/1.1/lib:$LD_LIBRARY_PATH
+# Wrapper script for OzSTAR
+
+# Load the python module
+ml gcc/12.3.0 python/3.11.3
 
 # Location of script
 SCRIPT=$(realpath "$0")
 SCRIPT_PATH=$(dirname "$SCRIPT")
-CONFIG_PATH="${SCRIPT_PATH}/conf.influxdb.toml"
 
-# Run python script using venv built using Python module
-"${SCRIPT_PATH}/venv/jobsummary/bin/python3" "$SCRIPT.py" --influx-config "$CONFIG_PATH" "$@"
+# Run main script
+"${SCRIPT_PATH}/jobsummary.sh" "$@"
