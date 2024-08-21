@@ -1,16 +1,12 @@
 #!/bin/bash
 
-# Path to Python module
-PATH=/apps/modules/software/Python/3.11.3-GCCcore-12.3.0/bin:$PATH
+# Emulate loading the python module
 LD_LIBRARY_PATH=/apps/modules/software/Python/3.11.3-GCCcore-12.3.0/lib:/apps/modules/software/OpenSSL/1.1/lib:$LD_LIBRARY_PATH
 
 # Location of script
 SCRIPT=$(realpath "$0")
 SCRIPT_PATH=$(dirname "$SCRIPT")
-
-# Get InfluxDB configuration
-source ${SCRIPT_PATH}/INFLUXDB.conf
-export INFLUXDB_URL INFLUXDB_TOKEN INFLUXDB_ORG
+CONFIG_PATH="${SCRIPT_PATH}/conf.influxdb.toml"
 
 # Run python script using venv built using Python module
-${SCRIPT_PATH}/venv/jobsummary/bin/python3 "$SCRIPT.py" "$@"
+${SCRIPT_PATH}/venv/jobsummary/bin/python3 "$SCRIPT.py" --config-file "$CONFIG_PATH" "$@"
