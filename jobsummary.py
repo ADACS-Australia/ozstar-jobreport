@@ -1,4 +1,3 @@
-import os
 import sys
 import argparse
 import traceback
@@ -9,29 +8,29 @@ from summary import JobSummary
 from influx import InfluxQuery
 
 
-def get_summary(job_id, config_file="conf.influxdb.toml", debug=False):
-    conf = Path(config_file)
+def get_summary(job_id, influx_config=None, debug=False):
     query = None
-    # Initialize InfluxQuery if the config file exists
-    if conf.exists():
+
+    # Initialize InfluxQuery if the configuration file exists
+    if influx_config is not None and Path(influx_config).exists():
         try:
-            query = InfluxQuery(config_file=conf, retries=3)
+            query = InfluxQuery(Path(influx_config), retries=3)
         except Exception:
             print("Warning: InfluxQuery could not be initialized")
             if debug:
                 print(traceback.format_exc())
     else:
-        print(f"Warning: InfluxDB configuration file '{conf}' does not exist")
+        print("Warning: InfluxDB configuration file not found")
 
     job_summary = JobSummary(job_id, query)
     return job_summary
 
 
-def main(job_id, epilog=False, config_file="conf.influxdb.toml", debug=False):
+def main(job_id, epilog=False, influx_config=None, debug=False):
     stdout_file = None
 
     # Create job summary
-    job_summary = get_summary(job_id, config_file, debug)
+    job_summary = get_summary(job_id, influx_config, debug)
 
     # Get output file if epilog is enabled
     if epilog:
@@ -76,9 +75,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-c",
-        "--config-file",
+        "--influx-config",
         type=str,
-        default="conf.influxdb.toml",
         help="InfluxDB configuration file",
     )
     args = parser.parse_args()
@@ -87,7 +85,7 @@ if __name__ == "__main__":
     try:
         # Ensure the code does not hang
         with Timeout(int(args.timeout)):
-            main(args.job_id, args.epilog, args.config_file, args.debug)
+            main(args.job_id, args.epilog, args.influx_config, args.debug)
 
     # Print exception tracebacks if in debug mode
     except Exception:
