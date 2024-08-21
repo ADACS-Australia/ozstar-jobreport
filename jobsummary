@@ -9,4 +9,4 @@ SCRIPT_PATH=$(dirname "$SCRIPT")
 CONFIG_PATH="${SCRIPT_PATH}/conf.influxdb.toml"
 
 # Run python script using venv built using Python module
-"${SCRIPT_PATH}/venv/jobsummary/bin/python3" "$SCRIPT.py" --config-file "$CONFIG_PATH" "$@"
+"${SCRIPT_PATH}/venv/jobsummary/bin/python3" "$SCRIPT.py" --influx-config "$CONFIG_PATH" "$@"
