@@ -11,7 +11,7 @@ echo "==> Creating venv..."
 python3 -m venv venv/jobsummary
 
 echo "==> Activating venv..."
-source venv/bin/activate
+source venv/jobsummary/bin/activate
 
 echo "==> Installing requirements..."
 pip install --upgrade pip
