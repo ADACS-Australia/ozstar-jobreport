@@ -2,8 +2,9 @@ import sys
 import argparse
 import traceback
 
+from socket import gethostname
 from pathlib import Path
-from utils import Timeout
+from utils import Timeout, get_scontrol_data
 from summary import JobSummary
 from influx import InfluxQuery
 
@@ -27,17 +28,28 @@ def get_summary(job_id, influx_config=None, debug=False):
 
 
 def main(job_id, epilog=False, influx_config=None, debug=False):
+    job_id = JobSummary.get_unique_id(job_id)
     stdout_file = None
+    batch_host = None
+
+    scontrol_data = get_scontrol_data(job_id, debug)
+
+    if scontrol_data is not None:
+        stdout_file = scontrol_data["std_out"]
+        batch_host = scontrol_data["batch_host"]
+
+    # Ensure that this only runs on the batch host if in epilog mode
+    if epilog and batch_host != gethostname():
+        print("Warning: job summary in epilog mode can only be run on the batch host")
+        return
 
     # Create job summary
     job_summary = get_summary(job_id, influx_config, debug)
 
-    # Get output file if epilog is enabled
-    if epilog:
-        if job_summary.finished:
-            stdout_file = job_summary.get_stdout_file(debug)
-        else:
-            print("Warning: job has not finished yet")
+    # Do nothing if in epilog mode and the job hasn't finished
+    if epilog and not job_summary.finished:
+        print("Warning: job has not finished yet")
+        return
 
     # Print/write the summary
     if job_summary is not None:

@@ -169,28 +169,6 @@ class JobSummary:
 
         return unique_id
 
-    def get_stdout_file(self, debug=False):
-        """
-        Get the path to the stdout file for the job
-        """
-
-        stdout_file = None
-
-        if self.db_data.state == "PENDING":
-            print("Warning: could not get stdout file -- job has not started ")
-        else:
-            try:
-                job = pyslurm.job().find_id(self.job_id)
-                stdout_file = job[0]["std_out"]
-            except ValueError:
-                print(
-                    "Warning: could not get stdout file -- job may have finished too long ago"
-                )
-                if debug:
-                    print(traceback.format_exc())
-
-        return stdout_file
-
     def get_lustre_summary(self):
         """
         Construct a summary of the Lustre usage

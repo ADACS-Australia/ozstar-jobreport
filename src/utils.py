@@ -1,4 +1,17 @@
 import signal
+import pyslurm
+import traceback
+
+
+def get_scontrol_data(job_id, debug=False):
+    try:
+        job = pyslurm.job().find_id(job_id)
+        return job[0]
+    except Exception:
+        print("Warning: could not get scontrol data")
+        if debug:
+            print(traceback.format_exc())
+        return None
 
 
 def humansize(nbytes, bytes=True):
