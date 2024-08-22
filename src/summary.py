@@ -1,4 +1,3 @@
-import traceback
 import pyslurm
 
 from tabulate import tabulate
@@ -12,6 +11,12 @@ class JobSummary:
     def __init__(self, job_id, influxquery=None):
         self.job_id = self.get_unique_id(str(job_id))
         self.db_data = pyslurm.db.Job.load(self.job_id)
+
+        if self.db_data.array_id and self.db_data.array_task_id:
+            self.influxid = f"{self.db_data.array_id}_{self.db_data.array_task_id}"
+        else:
+            self.influxid = str(self.job_id)
+
         self.finished = self.db_data.state not in UNFINISHED_STATES
         self.influxquery = influxquery
 
@@ -54,7 +59,7 @@ class JobSummary:
         if self.finished:
             return self.db_data.stats.max_resident_memory
         elif self.influxquery is not None:
-            return self.influxquery.get_max_mem(self.job_id)
+            return self.influxquery.get_max_mem(self.influxid)
         else:
             return None
 
@@ -90,7 +95,7 @@ class JobSummary:
             return user_cpu / self.db_data.stats.elapsed_cpu_time * 100
 
         elif self.influxquery is not None:
-            return self.influxquery.get_avg_cpu(self.job_id)
+            return self.influxquery.get_avg_cpu(self.influxid)
         else:
             return None
 
@@ -102,7 +107,7 @@ class JobSummary:
         if self.influxquery is None:
             return None
 
-        data = self.influxquery.get_lustre_jobstats(self.job_id)
+        data = self.influxquery.get_lustre_jobstats(self.influxid)
 
         def get_last_value(fs, server, field):
             """Get the last value, but if data is not available, return 0"""
