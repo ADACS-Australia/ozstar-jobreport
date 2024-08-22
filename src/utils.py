@@ -8,8 +8,8 @@ def get_scontrol_data(job_id, debug=False):
         job = pyslurm.job().find_id(job_id)
         return job[0]
     except Exception:
-        print("Warning: could not get scontrol data")
         if debug:
+            print("Warning: could not get scontrol data")
             print(traceback.format_exc())
         return None
 
