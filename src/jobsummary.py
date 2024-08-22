@@ -44,7 +44,11 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
         if stdout_file is not None and job_summary.finished:
             try:
                 with open(stdout_file, "a") as file:
-                    file.write(str(job_summary) + "\n")
+                    if epilog:
+                        content = "\n" + str(job_summary) + "\n"
+                    else:
+                        content = str(job_summary) + "\n"
+                    file.write(content)
             except PermissionError:
                 print("Error: permission denied writing to job stdout file")
         else:
