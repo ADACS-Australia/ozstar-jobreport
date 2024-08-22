@@ -7,6 +7,10 @@ def get_scontrol_data(job_id, debug=False):
     try:
         job = pyslurm.job().find_id(job_id)
         return job[0]
+    except ValueError:
+        if debug:
+            print(f"Warning: job {job_id} not found in scontrol")
+        return None
     except Exception:
         if debug:
             print("Warning: could not get scontrol data")
