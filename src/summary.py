@@ -9,7 +9,7 @@ UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
 
 class JobSummary:
     def __init__(self, job_id, influxquery=None):
-        self.job_id = self.get_unique_id(str(job_id))
+        self.job_id = self.get_raw_id(str(job_id))
         self.db_data = pyslurm.db.Job.load(self.job_id)
 
         if self.db_data.array_id and self.db_data.array_task_id:
@@ -149,13 +149,14 @@ class JobSummary:
         return warnings
 
     @staticmethod
-    def get_unique_id(job_id):
+    def get_raw_id(job_id):
         """
-        Get the unique ID of the job using the array job ID and task ID
-        If the unique ID is provided, this does nothing
+        Get the raw ID of the job using the array job ID and task ID,
+        or the heterogenous job ID and offset.
+        If the raw ID is provided, this does nothing
         """
 
-        unique_id = None
+        raw_id = None
 
         # Array jobs
         if "_" in job_id:
@@ -166,19 +167,19 @@ class JobSummary:
             # Find the one with the matching task ID
             for job in jobs.values():
                 if job.array_task_id == int(task_id):
-                    unique_id = job.id
+                    raw_id = job.id
         # Heterogenous jobs
         elif "+" in job_id:
             het_job_id, het_job_offset = job_id.split("+")
-            unique_id = int(het_job_id) + int(het_job_offset)
+            raw_id = int(het_job_id) + int(het_job_offset)
         # Standard jobs
         elif job_id.isdigit():
-            unique_id = int(job_id)
+            raw_id = int(job_id)
 
-        if unique_id is None:
+        if raw_id is None:
             raise KeyError(f"Job ID {job_id} not found")
 
-        return unique_id
+        return raw_id
 
     def get_lustre_summary(self):
         """

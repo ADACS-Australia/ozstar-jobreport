@@ -28,7 +28,7 @@ def get_summary(job_id, influx_config=None, debug=False):
 
 
 def main(job_id, epilog=False, influx_config=None, debug=False):
-    job_id = JobSummary.get_unique_id(job_id)
+    job_id = JobSummary.get_raw_id(job_id)
     stdout_file = None
     batch_host = None
 
