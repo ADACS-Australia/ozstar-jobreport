@@ -155,19 +155,25 @@ class JobSummary:
         If the unique ID is provided, this does nothing
         """
 
-        if "_" not in job_id and job_id.isdigit():
-            return int(job_id)
-
-        # Convert the array ID to the unique job ID
-        array_id, task_id = job_id.split("_")
-
-        db_filter = pyslurm.db.JobFilter(ids=[str(array_id)])
-        jobs = pyslurm.db.Jobs.load(db_filter)
-
         unique_id = None
-        for job in jobs.values():
-            if job.array_task_id == int(task_id):
-                unique_id = job.id
+
+        # Array jobs
+        if "_" in job_id:
+            array_id, task_id = job_id.split("_")
+            # Find all jobs in the array
+            db_filter = pyslurm.db.JobFilter(ids=[array_id])
+            jobs = pyslurm.db.Jobs.load(db_filter)
+            # Find the one with the matching task ID
+            for job in jobs.values():
+                if job.array_task_id == int(task_id):
+                    unique_id = job.id
+        # Heterogenous jobs
+        elif "+" in job_id:
+            het_job_id, het_job_offset = job_id.split("+")
+            unique_id = int(het_job_id) + int(het_job_offset)
+        # Standard jobs
+        elif job_id.isdigit():
+            unique_id = int(job_id)
 
         if unique_id is None:
             raise KeyError(f"Job ID {job_id} not found")
