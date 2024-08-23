@@ -152,7 +152,7 @@ class JobSummary:
     def get_raw_id(job_id):
         """
         Get the raw ID of the job using the array job ID and task ID,
-        or the heterogenous job ID and offset.
+        or the heterogeneous job ID and offset.
         If the raw ID is provided, this does nothing
         """
 
@@ -168,7 +168,7 @@ class JobSummary:
             for job in jobs.values():
                 if job.array_task_id == int(task_id):
                     raw_id = job.id
-        # Heterogenous jobs
+        # Heterogeneous jobs
         elif "+" in job_id:
             het_job_id, het_job_offset = job_id.split("+")
             raw_id = int(het_job_id) + int(het_job_offset)
