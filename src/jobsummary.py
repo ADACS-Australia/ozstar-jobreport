@@ -28,11 +28,11 @@ def get_summary(job_id, influx_config=None, debug=False):
 
 
 def main(job_id, epilog=False, influx_config=None, debug=False):
-    job_id = JobSummary.get_raw_id(job_id)
+    raw_id = JobSummary.get_raw_id(job_id)
     stdout_file = None
     batch_host = None
 
-    scontrol_data = get_scontrol_data(job_id, debug)
+    scontrol_data = get_scontrol_data(raw_id, debug)
 
     if scontrol_data is not None:
         stdout_file = scontrol_data["std_out"]

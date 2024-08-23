@@ -9,8 +9,9 @@ UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
 
 class JobSummary:
     def __init__(self, job_id, influxquery=None):
-        self.job_id = self.get_raw_id(str(job_id))
-        self.db_data = pyslurm.db.Job.load(self.job_id)
+        self.job_id = job_id
+        self.raw_id = self.get_raw_id(str(job_id))
+        self.db_data = pyslurm.db.Job.load(self.raw_id)
 
         if self.db_data.array_id and self.db_data.array_task_id:
             self.influxid = f"{self.db_data.array_id}_{self.db_data.array_task_id}"
