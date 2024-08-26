@@ -15,7 +15,7 @@ class JobSummary:
 
         if self.db_data.array_id and self.db_data.array_task_id:
             self.influxid = f"{self.db_data.array_id}_{self.db_data.array_task_id}"
-        elif '+' in str(self.job_id):
+        elif "+" in str(self.job_id):
             self.influxid = str(self.raw_id)
         else:
             self.influxid = str(self.job_id)
