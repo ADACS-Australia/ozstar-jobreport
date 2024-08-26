@@ -37,3 +37,5 @@ This script should be installed in a location accessible to users, and a symlink
 
 The codes aims to pull as much data as possible from the Slurm DB, and reverts to querying the InfluxDB when that's not possible. The Slurm DB only has data once the job is finished, and Lustre data is only ever available from Influx.
 An Influx toml configuration file is required. See the template.
+
+In epilog mode, the script will attempt to write to the job's standard output file, but only if the host matches the job's Batch Host. This is to prevent each node of a multi-node job from trying to write the output.
