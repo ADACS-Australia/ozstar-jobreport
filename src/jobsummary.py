@@ -40,7 +40,8 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
 
     # Ensure that this only runs on the batch host if in epilog mode
     if epilog and batch_host != gethostname():
-        print("Warning: job summary in epilog mode can only be run on the batch host")
+        if debug:
+            print("Warning: job summary in epilog mode can only be run on the batch host")
         return
 
     # Create job summary
