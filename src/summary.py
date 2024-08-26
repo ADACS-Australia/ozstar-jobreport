@@ -146,8 +146,16 @@ class JobSummary:
         if mem_usage_fraction is not None and mem_usage_fraction < 0.5:
             warnings += ["Too much memory requested"]
 
+        elapsed_time = self.summary_data["elapsed_time"]
+        time_limit = self.summary_data["time_limit"]
+
         if avg_cpu is not None and avg_cpu < 75.0:
             warnings += ["CPU usage is low"]
+
+        if elapsed_time is not None and time_limit is not None:
+            time_usage_fraction = elapsed_time / time_limit
+            if time_usage_fraction < 0.7:
+                warnings += ["Too much time requested"]
 
         return warnings
 
