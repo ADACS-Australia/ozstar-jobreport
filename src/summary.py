@@ -191,7 +191,7 @@ class JobSummary:
 
         data = self.summary_data["lustre_stats"]
 
-        if data is None:
+        if data == {} or data is None:
             lustre_string = "  No data available"
         else:
             fs_names = {
