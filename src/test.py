@@ -11,8 +11,9 @@ def str_to_bool(value):
 VERBOSE = str_to_bool(os.environ.get("VERBOSE", "no"))
 DEBUG = str_to_bool(os.environ.get("DEBUG", "no"))
 
-# Get current file path
-fpath = os.path.abspath(__file__)
+# Get root directory
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+influx_config=f"{root_dir}/conf.influxdb.toml"
 
 # Get a list of jobs from squeue
 test_jobs = pyslurm.Jobs.load()
@@ -23,7 +24,7 @@ for job in tqdm(test_jobs, desc="Testing jobs"):
         sys.stdout = open(os.devnull, "w")
 
     # Test job
-    print(get_summary(job, influx_config=f"{fpath}/../conf.influxdb.toml"), DEBUG)
+    print(get_summary(job, influx_config, DEBUG))
 
     # Restore print
     if not VERBOSE:
