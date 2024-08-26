@@ -8,6 +8,5 @@ if [ -z "${SLURM_JOB_ID}" ]; then
         exit 0
 fi
 
-# Run jobsummary for the job ID
-/apps/jobsummary/jobsummary "$SLURM_JOB_ID" || true
+/usr/sbin/runuser -u "$SLURM_JOB_USER" -- /apps/jobsummary/jobsummary --epilog "$SLURM_JOB_ID" || true
 exit 0
