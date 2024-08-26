@@ -19,6 +19,11 @@ influx_config=f"{root_dir}/conf.influxdb.toml"
 test_jobs = pyslurm.Jobs.load()
 
 for job in tqdm(test_jobs, desc="Testing jobs"):
+
+    # Skip pending jobs
+    if test_jobs[job].state == "PENDING":
+        continue
+
     # Suppress print
     if not VERBOSE:
         sys.stdout = open(os.devnull, "w")
