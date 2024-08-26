@@ -35,7 +35,7 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
     scontrol_data = get_scontrol_data(raw_id, debug)
 
     if scontrol_data is not None:
-        stdout_file = scontrol_data["std_out"]
+        stdout_file = Path(scontrol_data["std_out"])
         batch_host = scontrol_data["batch_host"]
 
     # Ensure that this only runs on the batch host if in epilog mode
