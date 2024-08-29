@@ -58,7 +58,7 @@ def _replace_number(filename, matches, number):
             num = number
 
         # Replace the match with the (padded) number
-        filename = filename.replace(match.group(0), num)
+        filename = filename.replace(match.group(0), str(num))
 
     return filename
 
