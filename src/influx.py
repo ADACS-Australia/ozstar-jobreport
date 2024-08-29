@@ -115,3 +115,23 @@ class InfluxQuery:
             return job_results[0].records[0].get_value()
         else:
             return None
+
+    def get_avg_gpu(self, job_id):
+        """
+        Query Influx for GPU usage and calculate the average
+        """
+
+        job_query = f"""
+        from(bucket: "{self.bucket}")
+        |> range(start: -{self.search_window})
+        |> filter(fn: (r) => r["_measurement"] == "average_gpu_usage")
+        |> filter(fn: (r) => r["job_id"] == "{job_id}")
+        |> mean()
+        """
+
+        job_results = self.query(job_query)
+
+        if len(job_results) > 0:
+            return job_results[0].records[0].get_value()
+        else:
+            return None

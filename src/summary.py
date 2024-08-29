@@ -30,6 +30,7 @@ class JobSummary:
             "elapsed_time": self.get_elapsed_time_seconds(),
             "time_limit": self.get_time_limit_seconds(),
             "avg_cpu": self.get_user_cpu_percentage(),
+            "avg_gpu": self.get_user_gpu_percentage(),
             "lustre_stats": self.get_lustre_stats(),
         }
 
@@ -102,6 +103,19 @@ class JobSummary:
         else:
             return None
 
+    def get_user_gpu_percentage(self):
+        """
+        Get the user GPU time as a percentage
+        (only available via InfluxDB)
+
+        Check if the job is on a GPU partition before attempting to query the InfluxDB server
+        """
+
+        if self.influxquery is not None and "gpu" in self.db_data.partition:
+            return self.influxquery.get_avg_gpu(self.influxid)
+        else:
+            return None
+
     def get_lustre_stats(self):
         """
         Get the Lustre stats for the job
@@ -139,6 +153,7 @@ class JobSummary:
         max_mem = self.summary_data["max_mem"]
         req_mem = self.summary_data["req_mem"]
         avg_cpu = self.summary_data["avg_cpu"]
+        avg_gpu = self.summary_data["avg_gpu"]
 
         mem_usage_fraction = None
         if max_mem is not None and req_mem is not None:
@@ -150,7 +165,16 @@ class JobSummary:
         time_limit = self.summary_data["time_limit"]
 
         if avg_cpu is not None and avg_cpu < 75.0:
-            warnings += ["CPU usage is low"]
+            if avg_gpu is not None and avg_gpu > 95.0:
+                warnings += ["CPU usage is low (possibly GPU-bound)"]
+            else:
+                warnings += ["CPU usage is low"]
+
+        if avg_gpu is not None and avg_gpu < 75.0:
+            if avg_cpu is not None and avg_cpu > 95.0:
+                warnings += ["GPU usage is low (possibly CPU-bound)"]
+            else:
+                warnings += ["GPU usage is low"]
 
         if elapsed_time is not None and time_limit is not None:
             time_usage_fraction = elapsed_time / time_limit
@@ -264,6 +288,21 @@ class JobSummary:
         name = "CPU"
         return name.ljust(self.heading_width) + line
 
+    def get_gpu_summary(self):
+        """
+        Construct a summary of the GPU usage.
+        """
+
+        avg_gpu = self.summary_data["avg_gpu"]
+
+        if avg_gpu is None:
+            return None
+        else:
+            line = percentage_bar(avg_gpu / 100) + " average"
+
+        name = "GPU"
+        return name.ljust(self.heading_width) + line
+
     def get_time_summary(self):
         """
         Construct a summary of the time usage
@@ -306,11 +345,15 @@ class JobSummary:
         summary_list = [
             self.get_mem_summary(),
             self.get_cpu_summary(),
+            self.get_gpu_summary(),
             self.get_time_summary(),
             "",
             self.get_lustre_summary(),
             self.get_warnings_summary(),
         ]
+
+        # Any Nones in the list are for disabled values - remove them
+        summary_list = [line for line in summary_list if line is not None]
 
         summary = "\n".join(summary_list)
 
