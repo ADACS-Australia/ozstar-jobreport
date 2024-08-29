@@ -31,6 +31,7 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
     raw_id = JobSummary.get_raw_id(job_id)
     stdout_file = None
     batch_host = None
+    is_batch_job = True
 
     scontrol_data = get_scontrol_data(raw_id, debug)
 
@@ -38,11 +39,17 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
         if scontrol_data["std_out"] is not None:
             stdout_file = Path(scontrol_data["std_out"])
         batch_host = scontrol_data["batch_host"]
+        is_batch_job = bool(scontrol_data['batch_flag'])
 
     # Ensure that this only runs on the batch host if in epilog mode
     if epilog and batch_host != gethostname():
         if debug:
             print("Warning: job summary in epilog mode can only be run on the batch host")
+        return
+
+    if epilog and not is_batch_job:
+        if debug:
+            print("Warning: job summary in epilog mode can only be run for batch jobs")
         return
 
     # Create job summary
