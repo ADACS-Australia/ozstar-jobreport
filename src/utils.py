@@ -41,7 +41,7 @@ def seconds_to_str(seconds):
 
 def percentage_bar(percentage, width=20, style=None):
     """Return a progress bar for a given percentage"""
-    bar = int(percentage * width)
+    bar = int(min(percentage,1.0) * width)
     if style == "arrow":
         bar = min(bar, width - 1)
         return f"[{'-' * bar}>{' ' * (width - 1 - bar)}] {percentage:5.1%}"
