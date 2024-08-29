@@ -5,6 +5,7 @@ import traceback
 from socket import gethostname
 from pathlib import Path
 from utils import Timeout, get_scontrol_data
+from stdout_expansion import expand_stdout
 from summary import JobSummary
 from influx import InfluxQuery
 
@@ -37,7 +38,8 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
 
     if scontrol_data is not None:
         if scontrol_data["std_out"] is not None:
-            stdout_file = Path(scontrol_data["std_out"])
+            stdout_file = expand_stdout(scontrol_data)
+            stdout_file = Path(stdout_file)
         batch_host = scontrol_data["batch_host"]
         is_batch_job = bool(scontrol_data['batch_flag'])
 
