@@ -78,8 +78,9 @@ scontrol does not consistently match the actual filename. The string in
 scontrol expands all specifiers except for %J, %N, %n, %s, and %t. This holds
 true even if '\\' is present, making it impossible to 'undo' the expansions
 performed by scontrol. Additionally, the special specifier '%%' is expanded by
-scontrol, so we cannot determine if a % was originally a specifier. For example,
-%%J becomes %J in scontrol, but we cannot know its original form.
+scontrol, so we cannot be certain if a % was intended to be specifier or not.
+For example, %%J becomes %J in scontrol, meaning the filename should have a
+literal '%J', but we cannot know this.
 """
 
 
