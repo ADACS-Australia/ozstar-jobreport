@@ -72,9 +72,20 @@ def _replace_string(filename, matches, string):
     return filename
 
 
+"""
+Note: This implementation is based on best effort, as the string stored in
+scontrol does not consistently match the actual filename. The string in
+scontrol expands all specifiers except for %J, %N, %n, %s, and %t. This holds
+true even if '\\' is present, making it impossible to 'undo' the expansions
+performed by scontrol. Additionally, the special specifier '%%' is expanded by
+scontrol, so we cannot determine if a % was originally a specifier. For example,
+%%J becomes %J in scontrol, but we cannot know its original form.
+"""
+
+
 def expand_stdout(scontrol_data):
     filename = scontrol_data["std_out"]
-    if '\\' in filename:
+    if "\\" in filename:
         return filename
     filename = replace_jobid(filename, scontrol_data["job_id"])
     filename = replace_hostname(filename, scontrol_data["batch_host"])
@@ -83,12 +94,12 @@ def expand_stdout(scontrol_data):
     filename = replace_taskid(filename, task_id=0)
     return filename
 
+
 # Example usage
 if __name__ == "__main__":
-
     filename = "\\%J_%N_%n_%s_%t"
     print(filename)
-    if '\\' in filename:
+    if "\\" in filename:
         print("No expansion needed")
 
     filename = "%J_%N_%n_%s_%t"

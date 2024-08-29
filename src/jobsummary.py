@@ -41,12 +41,14 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
             stdout_file = expand_stdout(scontrol_data)
             stdout_file = Path(stdout_file)
         batch_host = scontrol_data["batch_host"]
-        is_batch_job = bool(scontrol_data['batch_flag'])
+        is_batch_job = bool(scontrol_data["batch_flag"])
 
     # Ensure that this only runs on the batch host if in epilog mode
     if epilog and batch_host != gethostname():
         if debug:
-            print("Warning: job summary in epilog mode can only be run on the batch host")
+            print(
+                "Warning: job summary in epilog mode can only be run on the batch host"
+            )
         return
 
     if epilog and not is_batch_job:
@@ -72,7 +74,9 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
                 except PermissionError:
                     print("Error: permission denied writing to job stdout file")
             else:
-                raise FileNotFoundError(f"Error: job stdout file {stdout_file} not found")
+                raise FileNotFoundError(
+                    f"Error: job stdout file {stdout_file} not found"
+                )
         else:
             print(job_summary)
 
