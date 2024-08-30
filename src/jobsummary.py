@@ -4,7 +4,7 @@ import traceback
 
 from socket import gethostname
 from pathlib import Path
-from utils import Timeout, get_scontrol_data
+from utils import Timeout, get_scontrol_data, print_stderr
 from stdout_expansion import expand_stdout
 from summary import JobSummary
 from influx import InfluxQuery
@@ -18,11 +18,11 @@ def get_summary(job_id, influx_config=None, debug=False):
         try:
             query = InfluxQuery(Path(influx_config), retries=3)
         except Exception:
-            print("Warning: InfluxQuery could not be initialized")
+            print_stderr("Warning: InfluxQuery could not be initialized")
             if debug:
-                print(traceback.format_exc())
+                print_stderr(traceback.format_exc())
     else:
-        print("Warning: InfluxDB configuration file not found")
+        print_stderr("Warning: InfluxDB configuration file not found")
 
     job_summary = JobSummary(job_id, query)
     return job_summary
@@ -46,14 +46,16 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
     # Ensure that this only runs on the batch host if in epilog mode
     if epilog and batch_host != gethostname():
         if debug:
-            print(
+            print_stderr(
                 "Warning: job summary in epilog mode can only be run on the batch host"
             )
         return
 
     if epilog and not is_batch_job:
         if debug:
-            print("Warning: job summary in epilog mode can only be run for batch jobs")
+            print_stderr(
+                "Warning: job summary in epilog mode can only be run for batch jobs"
+            )
         return
 
     # Create job summary
@@ -61,7 +63,7 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
 
     # Do nothing if in epilog mode and the job hasn't finished
     if epilog and not job_summary.finished:
-        print("Warning: job has not finished yet")
+        print_stderr("Warning: job has not finished yet")
         return
 
     # Print/write the summary
@@ -70,9 +72,12 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
             if stdout_file.exists():
                 try:
                     with open(stdout_file, "a") as file:
+                        print_stderr(
+                            f"Appending jobid {job_summary.raw_id} summary to: {stdout_file}"
+                        )
                         file.write("\n" + str(job_summary) + "\n")
                 except PermissionError:
-                    print("Error: permission denied writing to job stdout file")
+                    print_stderr("Error: permission denied writing to job stdout file")
             else:
                 raise FileNotFoundError(
                     f"Error: job stdout file {stdout_file} not found"
@@ -114,6 +119,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    # for nicer output in slurmd logs
+    if args.epilog:
+        print_stderr("")
+
     # Handle exceptions at the top level
     try:
         # Ensure the code does not hang
@@ -122,7 +131,7 @@ if __name__ == "__main__":
 
     # Print exception tracebacks if in debug mode
     except Exception:
-        print("Error: job summary could not be generated")
+        print_stderr("Error: job summary could not be generated")
         if args.debug:
             raise
         sys.exit(1)

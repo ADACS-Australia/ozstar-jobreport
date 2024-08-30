@@ -1,6 +1,11 @@
 import signal
 import pyslurm
 import traceback
+import sys
+
+
+def print_stderr(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 
 def get_scontrol_data(job_id, debug=False):
@@ -9,12 +14,12 @@ def get_scontrol_data(job_id, debug=False):
         return job[0]
     except ValueError:
         if debug:
-            print(f"Warning: job {job_id} not found in scontrol")
+            print_stderr(f"Warning: job {job_id} not found in scontrol")
         return None
     except Exception:
         if debug:
-            print("Warning: could not get scontrol data")
-            print(traceback.format_exc())
+            print_stderr("Warning: could not get scontrol data")
+            print_stderr(traceback.format_exc())
         return None
 
 
@@ -41,7 +46,7 @@ def seconds_to_str(seconds):
 
 def percentage_bar(percentage, width=20, style=None):
     """Return a progress bar for a given percentage"""
-    bar = int(min(percentage,1.0) * width)
+    bar = int(min(percentage, 1.0) * width)
     if style == "arrow":
         bar = min(bar, width - 1)
         return f"[{'-' * bar}>{' ' * (width - 1 - bar)}] {percentage:5.1%}"
