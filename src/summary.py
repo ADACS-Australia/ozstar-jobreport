@@ -176,7 +176,7 @@ class JobSummary:
             else:
                 warnings += ["GPU usage is low"]
 
-        if elapsed_time is not None and time_limit is not None:
+        if self.finished and elapsed_time is not None and time_limit is not None:
             time_usage_fraction = elapsed_time / time_limit
             if time_usage_fraction < 0.7:
                 warnings += ["Too much time requested"]
