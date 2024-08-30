@@ -3,7 +3,7 @@
 # Wrapper script for OzSTAR
 
 # Manually add to LD_LIBRARY_PATH because "module load" may not be available
-LD_LIBRARY_PATH=/apps/modules/software/Python/3.11.3-GCCcore-12.3.0/lib:/apps/modules/software/OpenSSL/1.1/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/apps/modules/software/Python/3.11.3-GCCcore-12.3.0/lib:/apps/modules/software/OpenSSL/1.1/lib:$LD_LIBRARY_PATH
 
 # Location of script
 SCRIPT=$(realpath "$0")
