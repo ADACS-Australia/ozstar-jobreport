@@ -8,5 +8,9 @@ if [ -z "${SLURM_JOB_ID}" ]; then
     exit 0
 fi
 
-/usr/sbin/runuser -u "$SLURM_JOB_USER" -- /apps/jobsummary/jobsummary --epilog "$SLURM_JOB_ID" || true
+test_users="cchan dliptai"
+if [[ "$test_users" =~ $SLURM_JOB_USER ]]; then
+    /usr/sbin/runuser -u "$SLURM_JOB_USER" -- /usr/local/bin/jobsummary --epilog "$SLURM_JOB_ID" || true
+fi
+
 exit 0
