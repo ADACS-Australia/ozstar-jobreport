@@ -89,7 +89,7 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
 if __name__ == "__main__":
     # Get command line args
     parser = argparse.ArgumentParser(
-        description="Print out a summary of the job", prog="JobReport"
+        description="Print out a summary of the job", prog="jobreport"
     )
     parser.add_argument("job_id", type=str, help="Job ID")
     parser.add_argument(
