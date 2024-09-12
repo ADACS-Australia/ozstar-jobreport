@@ -8,10 +8,10 @@ if [ -z "$SLURM_LIB_DIR" ]; then
 fi
 
 echo "==> Creating venv..."
-python3 -m venv venv/jobsummary
+python3 -m venv venv/jobreport
 
 echo "==> Activating venv..."
-source venv/jobsummary/bin/activate
+source venv/jobreport/bin/activate
 
 echo "==> Installing requirements..."
 pip install --upgrade pip

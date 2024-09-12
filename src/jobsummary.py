@@ -6,7 +6,7 @@ from socket import gethostname
 from pathlib import Path
 from utils import Timeout, get_scontrol_data, print_stderr
 from stdout_expansion import expand_stdout
-from summary import JobSummary
+from summary import JobReport
 from influx import InfluxQuery
 
 
@@ -24,12 +24,12 @@ def get_summary(job_id, influx_config=None, debug=False):
     else:
         print_stderr("Warning: InfluxDB configuration file not found")
 
-    job_summary = JobSummary(job_id, query)
+    job_summary = JobReport(job_id, query)
     return job_summary
 
 
 def main(job_id, epilog=False, influx_config=None, debug=False):
-    raw_id = JobSummary.get_raw_id(job_id)
+    raw_id = JobReport.get_raw_id(job_id)
     stdout_file = None
     batch_host = None
     is_batch_job = True
@@ -89,7 +89,7 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
 if __name__ == "__main__":
     # Get command line args
     parser = argparse.ArgumentParser(
-        description="Print out a summary of the job", prog="jobsummary"
+        description="Print out a summary of the job", prog="JobReport"
     )
     parser.add_argument("job_id", type=str, help="Job ID")
     parser.add_argument(

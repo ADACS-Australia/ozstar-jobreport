@@ -10,4 +10,4 @@ SCRIPT=$(realpath "$0")
 SCRIPT_PATH=$(dirname "$SCRIPT")
 
 # Run main script
-"${SCRIPT_PATH}/jobsummary.sh" "$@"
+"${SCRIPT_PATH}/jobreport.sh" "$@"

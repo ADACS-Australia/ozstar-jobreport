@@ -2,7 +2,7 @@ import sys
 import os
 import pyslurm
 
-from jobsummary import get_summary
+from jobreport import get_summary
 from tqdm import tqdm
 
 

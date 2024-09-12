@@ -20,17 +20,17 @@ This script, specifically desigend for the OzSTAR supercomputers, generates a su
 ### Example Commands
 Generate Job Summary:
 ```
-python jobsummary.py <job_id>
+python jobreport.py <job_id>
 ```
 
 Generate Job Summary with in Epilog, appending to job's stdout file:
 ```
-python jobsummary.py <job_id> --epilog
+python jobreport.py <job_id> --epilog
 ```
 
 ## Installation
 
-This script should be installed in a location accessible to users, and a symlink to `./jobsummary` included in the PATH. Since the default Python environment does not have the Python pre-requisites, they should be installed in a virtual environment created in `venv/`, which `./jobsummary` activates prior to running the Python script.
+This script should be installed in a location accessible to users, and a symlink to `./jobreport` included in the PATH. Since the default Python environment does not have the Python pre-requisites, they should be installed in a virtual environment created in `venv/`, which `./jobreport` activates prior to running the Python script.
 
 
 ## Details

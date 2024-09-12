@@ -7,7 +7,7 @@ from utils import humansize, seconds_to_str, percentage_bar
 UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
 
 
-class JobSummary:
+class JobReport:
     def __init__(self, job_id, influxquery=None):
         self.job_id = job_id
         self.raw_id = self.get_raw_id(str(job_id))

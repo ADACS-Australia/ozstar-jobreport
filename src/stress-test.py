@@ -21,12 +21,12 @@ def get_jobs():
         return []
 
 
-def call_jobsummary(job_id):
-    """Call the jobsummary script for a given job ID."""
+def call_jobreport(job_id):
+    """Call the jobreport script for a given job ID."""
     try:
         start_time = time.time()
         result = subprocess.run(
-            ["jobsummary", job_id],
+            ["jobreport", job_id],
             capture_output=True,
             text=True,
             check=True,
@@ -39,21 +39,21 @@ def call_jobsummary(job_id):
             return end_time - start_time
 
     except subprocess.TimeoutExpired:
-        return f"Timeout calling jobsummary for job {job_id}"
+        return f"Timeout calling jobreport for job {job_id}"
 
     except subprocess.CalledProcessError as e:
-        return f"Error calling jobsummary for job {job_id}: {e}"
+        return f"Error calling jobreport for job {job_id}: {e}"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stress test jobsummary script")
+    parser = argparse.ArgumentParser(description="Stress test jobreport script")
     parser.add_argument("num_jobs", type=int, help="Number of jobs to test")
     parser.add_argument("sleep_time", type=int, help="Sleep time between tests")
     parser.add_argument("num_tests", type=int, help="Number of times to test")
     args = parser.parse_args()
 
     print(
-        f"Stress testing jobsummary script: querying {args.num_jobs} random jobs every {args.sleep_time} seconds for {args.num_tests} tests"
+        f"Stress testing jobreport script: querying {args.num_jobs} random jobs every {args.sleep_time} seconds for {args.num_tests} tests"
     )
 
     for _ in range(args.num_tests):
@@ -64,7 +64,7 @@ def main():
         job_ids = random.sample(job_ids, k=n)
 
         with ThreadPoolExecutor(max_workers=n) as executor:
-            futures = [executor.submit(call_jobsummary, job_id) for job_id in job_ids]
+            futures = [executor.submit(call_jobreport, job_id) for job_id in job_ids]
             for future in futures:
                 future.result()  # Wait for all futures to complete
 
