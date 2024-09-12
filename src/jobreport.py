@@ -6,11 +6,11 @@ from socket import gethostname
 from pathlib import Path
 from utils import Timeout, get_scontrol_data, print_stderr
 from stdout_expansion import expand_stdout
-from summary import JobReport
+from report import JobReport
 from influx import InfluxQuery
 
 
-def get_summary(job_id, influx_config=None, debug=False):
+def get_report(job_id, influx_config=None, debug=False):
     query = None
 
     # Initialize InfluxQuery if the configuration file exists
@@ -24,8 +24,8 @@ def get_summary(job_id, influx_config=None, debug=False):
     else:
         print_stderr("Warning: InfluxDB configuration file not found")
 
-    job_summary = JobReport(job_id, query)
-    return job_summary
+    job_report = JobReport(job_id, query)
+    return job_report
 
 
 def main(job_id, epilog=False, influx_config=None, debug=False):
@@ -47,35 +47,35 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
     if epilog and batch_host != gethostname():
         if debug:
             print_stderr(
-                "Warning: job summary in epilog mode can only be run on the batch host"
+                "Warning: job report in epilog mode can only be run on the batch host"
             )
         return
 
     if epilog and not is_batch_job:
         if debug:
             print_stderr(
-                "Warning: job summary in epilog mode can only be run for batch jobs"
+                "Warning: job report in epilog mode can only be run for batch jobs"
             )
         return
 
-    # Create job summary
-    job_summary = get_summary(job_id, influx_config, debug)
+    # Create job report
+    job_report = get_report(job_id, influx_config, debug)
 
     # Do nothing if in epilog mode and the job hasn't finished
-    if epilog and not job_summary.finished:
+    if epilog and not job_report.finished:
         print_stderr("Warning: job has not finished yet")
         return
 
-    # Print/write the summary
-    if job_summary is not None:
-        if epilog and stdout_file is not None and job_summary.finished:
+    # Print/write the report
+    if job_report is not None:
+        if epilog and stdout_file is not None and job_report.finished:
             if stdout_file.exists():
                 try:
                     with open(stdout_file, "a") as file:
                         print_stderr(
-                            f"Appending jobid {job_summary.raw_id} summary to: {stdout_file}"
+                            f"Appending jobid {job_report.raw_id} report to: {stdout_file}"
                         )
-                        file.write("\n" + str(job_summary) + "\n")
+                        file.write("\n" + str(job_report) + "\n")
                 except PermissionError:
                     print_stderr("Error: permission denied writing to job stdout file")
             else:
@@ -83,13 +83,13 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
                     f"Error: job stdout file {stdout_file} not found"
                 )
         else:
-            print(job_summary)
+            print(job_report)
 
 
 if __name__ == "__main__":
     # Get command line args
     parser = argparse.ArgumentParser(
-        description="Print out a summary of the job", prog="jobreport"
+        description="Print out a report of the job", prog="jobreport"
     )
     parser.add_argument("job_id", type=str, help="Job ID")
     parser.add_argument(
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         "--timeout",
         type=int,
         default=30,
-        help="Timeout in seconds for the job summary",
+        help="Timeout in seconds for the job report",
     )
     parser.add_argument(
         "-c",
@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
     # Print exception tracebacks if in debug mode
     except Exception:
-        print_stderr("Error: job summary could not be generated")
+        print_stderr("Error: job report could not be generated")
         if args.debug:
             raise
         sys.exit(1)

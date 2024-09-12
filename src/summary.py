@@ -23,7 +23,7 @@ class JobReport:
         self.finished = self.db_data.state not in UNFINISHED_STATES
         self.influxquery = influxquery
 
-        self.summary_data = {
+        self.report_data = {
             "state": self.db_data.state,
             "req_mem": self.get_req_mem_bytes(),
             "max_mem": self.get_max_mem_bytes(),
@@ -35,12 +35,12 @@ class JobReport:
         }
 
         self.warnings = self.get_warnings()
-        self.summary_data["warnings"] = self.warnings
+        self.report_data["warnings"] = self.warnings
 
         self.heading_width = 14
 
     def __str__(self):
-        return self.get_full_summary()
+        return self.get_full_report()
 
     def get_req_mem_bytes(self):
         """
@@ -150,10 +150,10 @@ class JobReport:
         Construct a list of warnings for the job
         """
         warnings = []
-        max_mem = self.summary_data["max_mem"]
-        req_mem = self.summary_data["req_mem"]
-        avg_cpu = self.summary_data["avg_cpu"]
-        avg_gpu = self.summary_data["avg_gpu"]
+        max_mem = self.report_data["max_mem"]
+        req_mem = self.report_data["req_mem"]
+        avg_cpu = self.report_data["avg_cpu"]
+        avg_gpu = self.report_data["avg_gpu"]
 
         mem_usage_fraction = None
         if max_mem is not None and req_mem is not None:
@@ -161,8 +161,8 @@ class JobReport:
         if mem_usage_fraction is not None and mem_usage_fraction < 0.5:
             warnings += ["Too much memory requested"]
 
-        elapsed_time = self.summary_data["elapsed_time"]
-        time_limit = self.summary_data["time_limit"]
+        elapsed_time = self.report_data["elapsed_time"]
+        time_limit = self.report_data["time_limit"]
 
         if avg_cpu is not None and avg_cpu < 75.0:
             if avg_gpu is not None and avg_gpu > 95.0:
@@ -216,12 +216,12 @@ class JobReport:
 
         return raw_id
 
-    def get_lustre_summary(self):
+    def get_lustre_report(self):
         """
-        Construct a summary of the Lustre usage
+        Construct a report of the Lustre usage
         """
 
-        data = self.summary_data["lustre_stats"]
+        data = self.report_data["lustre_stats"]
 
         if data == {} or data is None:
             lustre_string = "  No data available"
@@ -250,17 +250,17 @@ class JobReport:
             indent = 2 * " "
             lustre_string = indent + table.replace("\n", "\n" + indent)
 
-        summary = f"Lustre Filesystem:\n{lustre_string}"
+        report = f"Lustre Filesystem:\n{lustre_string}"
 
-        return summary + "\n"
+        return report + "\n"
 
-    def get_mem_summary(self):
+    def get_mem_report(self):
         """
-        Construct a summary of the memory usage
+        Construct a report of the memory usage
         """
 
-        max_mem = self.summary_data["max_mem"]
-        req_mem = self.summary_data["req_mem"]
+        max_mem = self.report_data["max_mem"]
+        req_mem = self.report_data["req_mem"]
 
         if max_mem is None or req_mem is None:
             line = "No data available"
@@ -273,12 +273,12 @@ class JobReport:
         name = "Memory (RAM)"
         return name.ljust(self.heading_width) + line
 
-    def get_cpu_summary(self):
+    def get_cpu_report(self):
         """
-        Construct a summary of the CPU usage.
+        Construct a report of the CPU usage.
         """
 
-        avg_cpu = self.summary_data["avg_cpu"]
+        avg_cpu = self.report_data["avg_cpu"]
 
         if avg_cpu is None:
             line = "No data available"
@@ -288,12 +288,12 @@ class JobReport:
         name = "CPU"
         return name.ljust(self.heading_width) + line
 
-    def get_gpu_summary(self):
+    def get_gpu_report(self):
         """
-        Construct a summary of the GPU usage.
+        Construct a report of the GPU usage.
         """
 
-        avg_gpu = self.summary_data["avg_gpu"]
+        avg_gpu = self.report_data["avg_gpu"]
 
         if avg_gpu is None:
             return None
@@ -303,13 +303,13 @@ class JobReport:
         name = "GPU"
         return name.ljust(self.heading_width) + line
 
-    def get_time_summary(self):
+    def get_time_report(self):
         """
-        Construct a summary of the time usage
+        Construct a report of the time usage
         """
 
-        elapsed_time = self.summary_data["elapsed_time"]
-        time_limit = self.summary_data["time_limit"]
+        elapsed_time = self.report_data["elapsed_time"]
+        time_limit = self.report_data["time_limit"]
 
         if elapsed_time is None or time_limit is None:
             line = "No data available"
@@ -322,48 +322,48 @@ class JobReport:
         name = "Time"
         return name.ljust(self.heading_width) + line
 
-    def get_warnings_summary(self):
+    def get_warnings_report(self):
         """
-        Construct a summary of the warnings
+        Construct a report of the warnings
         """
 
-        warnings = self.summary_data["warnings"]
+        warnings = self.report_data["warnings"]
 
         if warnings is None or len(warnings) == 0:
-            summary = ""
+            report = ""
         else:
             header = ["Warnings:"]
-            summary = "\n".join(header + [f"  - {w}" for w in warnings])
+            report = "\n".join(header + [f"  - {w}" for w in warnings])
 
-        return summary + "\n"
+        return report + "\n"
 
-    def get_full_summary(self):
+    def get_full_report(self):
         """
-        Construct a full summary of the job
+        Construct a full report of the job
         """
 
-        summary_list = [
-            self.get_mem_summary(),
-            self.get_cpu_summary(),
-            self.get_gpu_summary(),
-            self.get_time_summary(),
+        report_list = [
+            self.get_mem_report(),
+            self.get_cpu_report(),
+            self.get_gpu_report(),
+            self.get_time_report(),
             "",
-            self.get_lustre_summary(),
-            self.get_warnings_summary(),
+            self.get_lustre_report(),
+            self.get_warnings_report(),
         ]
 
         # Any Nones in the list are for disabled values - remove them
-        summary_list = [line for line in summary_list if line is not None]
+        report_list = [line for line in report_list if line is not None]
 
-        summary = "\n".join(summary_list)
+        report = "\n".join(report_list)
 
         # Remove the last newline
-        summary = summary.strip("\n")
+        report = report.strip("\n")
 
-        lines = summary.split("\n")
+        lines = report.split("\n")
 
         # add a title
-        title = f"Job Summary: {self.job_id} ({self.summary_data['state']})"
+        title = f"Job Report: {self.job_id} ({self.report_data['state']})"
 
         # find longest line
         max_len = max(max([len(line) for line in lines]), len(title))
@@ -379,10 +379,10 @@ class JobReport:
         # bottom border
         bottom_border = "+" + "-" * (max_len + 2) + "+"
 
-        summary = "\n".join(
+        report = "\n".join(
             [title_line]
             + [f"| {line.ljust(max_len)} |" for line in lines]
             + [bottom_border]
         )
 
-        return summary
+        return report

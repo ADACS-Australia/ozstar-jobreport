@@ -2,7 +2,7 @@ import sys
 import os
 import pyslurm
 
-from jobreport import get_summary
+from jobreport import get_report
 from tqdm import tqdm
 
 
@@ -30,7 +30,7 @@ for job in tqdm(test_jobs, desc="Testing jobs"):
         sys.stdout = open(os.devnull, "w")
 
     # Test job
-    print(get_summary(job, influx_config, DEBUG))
+    print(get_report(job, influx_config, DEBUG))
 
     # Restore print
     if not VERBOSE:
