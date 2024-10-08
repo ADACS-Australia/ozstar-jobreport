@@ -262,7 +262,10 @@ class JobReport:
         max_mem = self.report_data["max_mem"]
         req_mem = self.report_data["req_mem"]
 
-        if max_mem is None or req_mem is None:
+        # When the job has first started, data is not available
+        initialising = self.report_data["elapsed_time"] < 60 and max_mem == 0
+
+        if max_mem is None or req_mem is None or initialising:
             line = "No data available"
         else:
             line = (
@@ -280,7 +283,10 @@ class JobReport:
 
         avg_cpu = self.report_data["avg_cpu"]
 
-        if avg_cpu is None:
+        # When the job has first started, data is not available
+        initialising = self.report_data["elapsed_time"] < 60 and avg_cpu == 0
+
+        if avg_cpu is None or initialising:
             line = "No data available"
         else:
             line = percentage_bar(avg_cpu / 100) + " average"
@@ -329,7 +335,11 @@ class JobReport:
 
         warnings = self.report_data["warnings"]
 
-        if warnings is None or len(warnings) == 0:
+        # Don't show warnings when the job has just started
+        # Do show warnings if the job has finished in a short amount of time
+        initialising = self.report_data["elapsed_time"] < 60 and self.report_data["state"] != "COMPLETED"
+
+        if warnings is None or len(warnings) == 0 or initialising:
             report = ""
         else:
             header = ["Warnings:"]
