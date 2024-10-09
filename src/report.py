@@ -336,8 +336,7 @@ class JobReport:
         warnings = self.report_data["warnings"]
 
         # Don't show warnings when the job has just started
-        # Do show warnings if the job has finished in a short amount of time
-        initialising = self.report_data["elapsed_time"] < 60 and self.report_data["state"] != "COMPLETED"
+        initialising = self.report_data["elapsed_time"] < 60
 
         if warnings is None or len(warnings) == 0 or initialising:
             report = ""
