@@ -8,17 +8,21 @@ def print_stderr(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def get_scontrol_data(job_id, debug=False):
+def get_live_job_data(job_id, debug=False):
+    """
+    Get live job data from the Slurm controller (scontrol).
+    This returns current job state, not historical data from the DB.
+    """
     try:
-        job = pyslurm.job().find_id(job_id)
-        return job[0]
+        job = pyslurm.Job.load(job_id)
+        return job
     except ValueError:
         if debug:
-            print_stderr(f"Warning: job {job_id} not found in scontrol")
+            print_stderr(f"Warning: job {job_id} not found in Slurm controller")
         return None
     except Exception:
         if debug:
-            print_stderr("Warning: could not get scontrol data")
+            print_stderr("Warning: could not get live job data from Slurm controller")
             print_stderr(traceback.format_exc())
         return None
 

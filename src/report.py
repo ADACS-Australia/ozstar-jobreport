@@ -61,7 +61,7 @@ class JobReport:
         """
 
         if self.finished:
-            return self.db_data.stats.max_resident_memory
+            return self.db_data.stats.resident_memory
         elif self.influxquery is not None:
             return self.influxquery.get_max_mem(self.influxid)
         else:

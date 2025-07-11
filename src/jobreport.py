@@ -4,7 +4,7 @@ import traceback
 
 from socket import gethostname
 from pathlib import Path
-from utils import Timeout, get_scontrol_data, print_stderr
+from utils import Timeout, get_live_job_data, print_stderr
 from stdout_expansion import expand_stdout
 from report import JobReport
 from influx import InfluxQuery
@@ -34,14 +34,15 @@ def main(job_id, epilog=False, influx_config=None, debug=False):
     batch_host = None
     is_batch_job = True
 
-    scontrol_data = get_scontrol_data(raw_id, debug)
+    # Get live job data from Slurm controller (not DB)
+    job_data = get_live_job_data(raw_id, debug)
 
-    if scontrol_data is not None:
-        if scontrol_data["std_out"] is not None:
-            stdout_file = expand_stdout(scontrol_data)
+    if job_data is not None:
+        if job_data.standard_output is not None:
+            stdout_file = expand_stdout(job_data)
             stdout_file = Path(stdout_file)
-        batch_host = scontrol_data["batch_host"]
-        is_batch_job = bool(scontrol_data["batch_flag"])
+        batch_host = job_data.batch_host
+        is_batch_job = bool(job_data.is_batch_job)
 
     # Ensure that this only runs on the batch host if in epilog mode
     if epilog and batch_host != gethostname():

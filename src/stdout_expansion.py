@@ -84,12 +84,12 @@ literal '%J', but we cannot know this.
 """
 
 
-def expand_stdout(scontrol_data):
-    filename = scontrol_data["std_out"]
+def expand_stdout(job_data):
+    filename = job_data.standard_output
     if "\\" in filename:
         return filename
-    filename = replace_jobid(filename, scontrol_data["job_id"])
-    filename = replace_hostname(filename, scontrol_data["batch_host"])
+    filename = replace_jobid(filename, str(job_data.id))
+    filename = replace_hostname(filename, job_data.batch_host)
     filename = replace_node_id(filename, node_id=0)
     filename = replace_stepid(filename, step_id="batch")
     filename = replace_taskid(filename, task_id=0)
