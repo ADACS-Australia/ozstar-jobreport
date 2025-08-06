@@ -32,7 +32,12 @@ class InfluxQuery:
 
     def query_check(self):
         # Perform a simple query to validate the organization
-        query = f'from(bucket: "{self.bucket}") |> range(start: -1m) |> limit(n:1)'
+        query = f"""
+        from(bucket: "{self.bucket}")
+        |> range(start: -2m)
+        |> filter(fn: (r) => r["_measurement"] == "jobmon_cadence")
+        |> last()
+        """
         self.influx_query_api.query(query)
 
     def query(self, job_query):
