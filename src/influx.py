@@ -11,11 +11,13 @@ class InfluxQuery:
         self,
         config_file,
         retries=3,
-        search_window="7d",
+        default_search_window="7d",
         bucket="jobmon-stats",
         lustre_bucket="lustre-jobstats",
     ):
-        self.search_window = search_window
+        # Set the default search window.
+        # Can be changed later with set_search_window() or set_search_range()
+        self.set_search_window(default_search_window)
         self.bucket = bucket
         self.lustre_bucket = lustre_bucket
         self.influx_client = InfluxDBClient.from_config_file(
@@ -24,6 +26,15 @@ class InfluxQuery:
         self.health_check()
         self.influx_query_api = self.influx_client.query_api()
         self.query_check()
+
+    def set_search_window(self, window):
+        self.search_window = f"start: -{window}"
+
+    def set_search_range(self, start, stop):
+        if stop:
+            self.search_window = f"start: {start}, stop: {stop}"
+        else:
+            self.search_window = f"start: {start}"
 
     def health_check(self):
         health = self.influx_client.health()
@@ -51,7 +62,7 @@ class InfluxQuery:
         # Query for the max memory usage of any node in the job
         job_query = f"""
         from(bucket: "{self.bucket}")
-        |> range(start: -{self.search_window})
+        |> range({self.search_window})
         |> filter(fn: (r) => r["_measurement"] == "job_max_memory")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
         |> last()
@@ -72,7 +83,7 @@ class InfluxQuery:
 
         job_query = f"""
         from(bucket: "{self.lustre_bucket}")
-        |> range(start: -{self.search_window})
+        |> range({self.search_window})
         |> filter(fn: (r) => r["_measurement"] == "lustre")
         |> filter(fn: (r) => r["job"] == "{job_id}")
         |> last()
@@ -108,7 +119,7 @@ class InfluxQuery:
 
         job_query = f"""
         from(bucket: "{self.bucket}")
-        |> range(start: -{self.search_window})
+        |> range({self.search_window})
         |> filter(fn: (r) => r["_measurement"] == "average_cpu_usage")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
         |> mean()
@@ -128,7 +139,7 @@ class InfluxQuery:
 
         job_query = f"""
         from(bucket: "{self.bucket}")
-        |> range(start: -{self.search_window})
+        |> range({self.search_window})
         |> filter(fn: (r) => r["_measurement"] == "average_gpu_usage")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
         |> mean()
