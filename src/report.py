@@ -23,8 +23,9 @@ class JobReport:
         self.finished = self.db_data.state not in UNFINISHED_STATES
         self.influxquery = influxquery
 
-        # "start" and "end" times are Unix timestamps in seconds
-        self.influxquery.set_search_range(self.db_data.start_time, self.db_data.end_time)
+        # Note: "start" and "end" times are Unix timestamps in seconds
+        if self.influxquery is not None:
+            self.influxquery.set_search_range(self.db_data.start_time, self.db_data.end_time)
 
         self.report_data = {
             "state": self.db_data.state,
