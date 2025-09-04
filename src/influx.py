@@ -120,21 +120,40 @@ class InfluxQuery:
         elif self.verbose:
             print("InfluxDB health is OK")
 
-    def get_bucket(self):
+    def get_bucket(self, bucket_type="main"):
         """
-        Get the appropriate main bucket to use based on the search window.
+        Get the appropriate bucket to use based on the search window and bucket type.
+
+        Args:
+            bucket_type (str): Type of bucket to get ("main" or "lustre")
 
         Returns:
             str: Bucket name to use (either main bucket or downsampled bucket)
+
+        Raises:
+            ValueError: If bucket_type is not "main" or "lustre"
         """
-        # If outside bucket retention period, use downsampled bucket
-        use_downsampled = self.search_window_start < (int(time.time()) - self.main_bucket_retention)
-        if self.verbose:
-            print("Using downsampled main bucket: ", use_downsampled)
-        if use_downsampled:
-            return self.downsampled_bucket
+        if bucket_type == "main":
+            retention_period = self.main_bucket_retention
+            regular_bucket = self.bucket
+            downsampled_bucket = self.downsampled_bucket
+        elif bucket_type == "lustre":
+            retention_period = self.lustre_bucket_retention
+            regular_bucket = self.lustre_bucket
+            downsampled_bucket = self.downsampled_lustre_bucket
         else:
-            return self.bucket
+            raise ValueError(f"bucket_type must be 'main' or 'lustre', got '{bucket_type}'")
+
+        # If outside bucket retention period, use downsampled bucket
+        use_downsampled = self.search_window_start < (int(time.time()) - retention_period)
+
+        if self.verbose:
+            print(f"Using downsampled {bucket_type} bucket: ", use_downsampled)
+
+        if use_downsampled:
+            return downsampled_bucket
+        else:
+            return regular_bucket
 
     def get_lustre_bucket(self):
         """
@@ -143,14 +162,7 @@ class InfluxQuery:
         Returns:
             str: Lustre bucket name to use (either main or downsampled bucket)
         """
-        # If outside bucket retention period, use downsampled bucket
-        use_downsampled = self.search_window_start < (int(time.time()) - self.lustre_bucket_retention)
-        if self.verbose:
-            print("Using downsampled lustre bucket: ", use_downsampled)
-        if use_downsampled:
-            return self.downsampled_lustre_bucket
-        else:
-            return self.lustre_bucket
+        return self.get_bucket("lustre")
 
     def query(self, job_query):
         """
