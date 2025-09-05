@@ -1,3 +1,5 @@
+import time
+from datetime import datetime
 from influxdb_client import InfluxDBClient
 
 
@@ -7,62 +9,191 @@ class InfluxQuery:
     # ORG = "swinburne"
     # TOKEN = "<read only token>"
 
+    DEFAULT_SEARCH_WINDOW = 604800      # seconds (7 days)
+
     def __init__(
         self,
         config_file,
         retries=3,
-        default_search_window="7d",
         bucket="jobmon-stats",
         lustre_bucket="lustre-jobstats",
+        downsampled_bucket="jobmon-stats-downsampled",
+        downsampled_lustre_bucket="lustre-jobstats-downsampled",
+        verbose=False,
     ):
-        # Set the default search window.
-        # Can be changed later with set_search_window() or set_search_range()
-        self.set_search_window(default_search_window)
+        """
+        Initialize InfluxDB client and set up connection parameters.
+
+        Args:
+            config_file: Path to InfluxDB configuration file
+            retries: Number of connection retries (default: 3)
+            bucket: Main bucket name for job statistics
+            lustre_bucket: Bucket name for Lustre filesystem statistics
+            downsampled_bucket: Downsampled version of main bucket
+            downsampled_lustre_bucket: Downsampled version of Lustre bucket
+            verbose: Enable verbose logging output
+        """
+        self.verbose = verbose
+        # Set the default search window (can be changed later).
+        self.set_search_window(int(time.time()) - self.DEFAULT_SEARCH_WINDOW)
         self.bucket = bucket
         self.lustre_bucket = lustre_bucket
+        self.downsampled_bucket = downsampled_bucket
+        self.downsampled_lustre_bucket = downsampled_lustre_bucket
+        self.use_downsampled = False
         self.influx_client = InfluxDBClient.from_config_file(
             config_file, retries=retries
         )
         self.health_check()
         self.influx_query_api = self.influx_client.query_api()
-        self.query_check()
+        self.check_buckets()
+        self._get_bucket_retention()
 
-    def set_search_window(self, window):
-        self.search_window = f"start: -{window}"
+    def check_buckets(self):
+        """
+        Verify that all required InfluxDB buckets are accessible.
 
-    def set_search_range(self, start, stop):
+        Raises:
+            Exception: If any bucket is not accessible
+        """
+        if self.verbose: print("Checking InfluxDB buckets...")
+        buckets = [
+            self.bucket,
+            self.lustre_bucket,
+            self.downsampled_bucket,
+            self.downsampled_lustre_bucket
+        ]
+        for bucket in buckets:
+            if self.influx_client.buckets_api().find_bucket_by_name(bucket) is None:
+                raise Exception(f"Bucket '{bucket}' is not accessible")
+            elif self.verbose:
+                print(f"Bucket {bucket} is OK")
+
+    def _get_bucket_retention(self):
+        """
+        Retrieve retention periods for main and Lustre buckets from InfluxDB.
+
+        Sets instance variables for main_bucket_retention and lustre_bucket_retention
+        in seconds.
+        """
+        self.main_bucket_retention = self.influx_client.buckets_api().find_bucket_by_name(self.bucket).retention_rules[0].every_seconds
+        self.lustre_bucket_retention = self.influx_client.buckets_api().find_bucket_by_name(self.lustre_bucket).retention_rules[0].every_seconds
+
+        if self.verbose:
+            print("Main bucket retention period (s)  : ", self.main_bucket_retention)
+            print("Lustre bucket retention period (s): ", self.lustre_bucket_retention)
+
+    def set_search_window(self, start, stop=None):
+        """
+        Set the time window for InfluxDB queries.
+
+        Args:
+            start: Unix timestamp for the start of the search window
+            stop: Unix timestamp for the end of the search window (optional)
+        """
+        self.search_window_start = start
+        self.search_window_stop = stop
         if stop:
-            self.search_window = f"start: {start}, stop: {stop}"
+            self.search_window_str = f"start: {start}, stop: {stop}"
         else:
-            self.search_window = f"start: {start}"
+            self.search_window_str = f"start: {start}"
+
+        if self.verbose:
+            print("Search window set to: ", f'"{self.search_window_str}"')
+            start_h = datetime.fromtimestamp(start).strftime("%Y-%m-%d %H:%M:%S")
+            stop_h = datetime.fromtimestamp(stop) if stop else datetime.now()
+            stop_h = stop_h.strftime("%Y-%m-%d %H:%M:%S")
+            print(f" start: {start_h}")
+            print(f"  stop: {stop_h}")
 
     def health_check(self):
+        """
+        Check the health status of the InfluxDB server.
+
+        Raises:
+            Exception: If InfluxDB server is not reachable or unhealthy
+        """
+        if self.verbose: print("Checking InfluxDB health...")
         health = self.influx_client.health()
         if health.status != "pass":
             raise Exception("Warning: could not connect to InfluxDB server")
+        elif self.verbose:
+            print("InfluxDB health is OK")
 
-    def query_check(self):
-        # Perform a simple query to validate the organization
-        query = f"""
-        from(bucket: "{self.bucket}")
-        |> range(start: -2m)
-        |> filter(fn: (r) => r["_measurement"] == "jobmon_cadence")
-        |> last()
+    def get_bucket(self, bucket_type="main"):
         """
-        self.influx_query_api.query(query)
+        Get the appropriate bucket to use based on the search window and bucket type.
+
+        Args:
+            bucket_type (str): Type of bucket to get ("main" or "lustre")
+
+        Returns:
+            str: Bucket name to use (either main bucket or downsampled bucket)
+
+        Raises:
+            ValueError: If bucket_type is not "main" or "lustre"
+        """
+        if bucket_type == "main":
+            retention_period = self.main_bucket_retention
+            regular_bucket = self.bucket
+            downsampled_bucket = self.downsampled_bucket
+        elif bucket_type == "lustre":
+            retention_period = self.lustre_bucket_retention
+            regular_bucket = self.lustre_bucket
+            downsampled_bucket = self.downsampled_lustre_bucket
+        else:
+            raise ValueError(f"bucket_type must be 'main' or 'lustre', got '{bucket_type}'")
+
+        # If outside bucket retention period, use downsampled bucket
+        use_downsampled = self.search_window_start < (int(time.time()) - retention_period)
+
+        if self.verbose:
+            print(f"Using downsampled {bucket_type} bucket: ", use_downsampled)
+
+        if use_downsampled:
+            return downsampled_bucket
+        else:
+            return regular_bucket
+
+    def get_lustre_bucket(self):
+        """
+        Get the appropriate Lustre bucket to use based on the search window.
+
+        Returns:
+            str: Lustre bucket name to use (either main or downsampled bucket)
+        """
+        return self.get_bucket("lustre")
 
     def query(self, job_query):
+        """
+        Execute a query against the InfluxDB database.
+
+        Args:
+            job_query: The InfluxDB query string to execute
+
+        Returns:
+            Query result from InfluxDB
+        """
+        if self.verbose:
+            print("Executing query:")
+            print(job_query)
         return self.influx_query_api.query(job_query)
 
     def get_max_mem(self, job_id):
         """
-        Query Influx for slurm memory stats
+        Query InfluxDB for maximum memory usage of a job.
+
+        Args:
+            job_id: The job ID to query for
+
+        Returns:
+            int: Maximum memory usage in bytes, or None if no data found
         """
 
         # Query for the max memory usage of any node in the job
         job_query = f"""
-        from(bucket: "{self.bucket}")
-        |> range({self.search_window})
+        from(bucket: "{self.get_bucket()}")
+        |> range({self.search_window_str})
         |> filter(fn: (r) => r["_measurement"] == "job_max_memory")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
         |> last()
@@ -72,18 +203,28 @@ class InfluxQuery:
 
         if len(job_results) > 0:
             # Get the max value and convert MB to B
-            return job_results[0].records[0].get_value() * 1024**2
+            result = job_results[0].records[0].get_value() * 1024**2
+            if self.verbose:
+                print("(get_max_mem) result: ", result)
+            return result
         else:
             return None
 
     def get_lustre_jobstats(self, job_id):
         """
-        Query Influx for the Lustre jobstats
+        Query InfluxDB for Lustre filesystem statistics for a specific job.
+
+        Args:
+            job_id: The job ID to query for
+
+        Returns:
+            dict: Nested dictionary containing Lustre statistics organized by filesystem,
+                  server type, and field with timestamp and value arrays
         """
 
         job_query = f"""
-        from(bucket: "{self.lustre_bucket}")
-        |> range({self.search_window})
+        from(bucket: "{self.get_lustre_bucket()}")
+        |> range({self.search_window_str})
         |> filter(fn: (r) => r["_measurement"] == "lustre")
         |> filter(fn: (r) => r["job"] == "{job_id}")
         |> last()
@@ -110,16 +251,26 @@ class InfluxQuery:
                 data[fs][server][field]["ts"] += [ts]
                 data[fs][server][field]["value"] += [record.get_value()]
 
+        if self.verbose:
+            print("(get_lustre_jobstats) result:")
+            print(data)
+
         return data
 
     def get_avg_cpu(self, job_id):
         """
-        Query Influx for CPU usage and calculate the average
+        Query InfluxDB for CPU usage statistics and calculate the average.
+
+        Args:
+            job_id: The job ID to query for
+
+        Returns:
+            float: Average CPU usage percentage, or None if no data found
         """
 
         job_query = f"""
-        from(bucket: "{self.bucket}")
-        |> range({self.search_window})
+        from(bucket: "{self.get_bucket()}")
+        |> range({self.search_window_str})
         |> filter(fn: (r) => r["_measurement"] == "average_cpu_usage")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
         |> mean()
@@ -128,18 +279,27 @@ class InfluxQuery:
         job_results = self.query(job_query)
 
         if len(job_results) > 0:
-            return job_results[0].records[0].get_value()
+            result = job_results[0].records[0].get_value()
+            if self.verbose:
+                print("(get_avg_cpu) result: ", result)
+            return result
         else:
             return None
 
     def get_avg_gpu(self, job_id):
         """
-        Query Influx for GPU usage and calculate the average
+        Query InfluxDB for GPU usage statistics and calculate the average.
+
+        Args:
+            job_id: The job ID to query for
+
+        Returns:
+            float: Average GPU usage percentage, or None if no data found
         """
 
         job_query = f"""
-        from(bucket: "{self.bucket}")
-        |> range({self.search_window})
+        from(bucket: "{self.get_bucket()}")
+        |> range({self.search_window_str})
         |> filter(fn: (r) => r["_measurement"] == "average_gpu_usage")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
         |> mean()
@@ -148,6 +308,9 @@ class InfluxQuery:
         job_results = self.query(job_query)
 
         if len(job_results) > 0:
-            return job_results[0].records[0].get_value()
+            result = job_results[0].records[0].get_value()
+            if self.verbose:
+                print("(get_avg_gpu) result: ", result)
+            return result
         else:
             return None

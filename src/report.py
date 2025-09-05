@@ -8,6 +8,7 @@ UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
 
 
 class JobReport:
+
     def __init__(self, job_id, influxquery=None):
         self.job_id = job_id
         self.raw_id = self.get_raw_id(str(job_id))
@@ -25,7 +26,7 @@ class JobReport:
 
         # Note: "start" and "end" times are Unix timestamps in seconds
         if self.influxquery is not None:
-            self.influxquery.set_search_range(self.db_data.start_time, self.db_data.end_time)
+            self.influxquery.set_search_window(self.db_data.start_time, self.db_data.end_time)
 
         self.report_data = {
             "state": self.db_data.state,
