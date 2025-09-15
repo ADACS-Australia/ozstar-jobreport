@@ -10,7 +10,7 @@ from report import JobReport
 from influx import InfluxQuery
 
 
-def get_report(job_id, influx_config=None, debug=False, plot=False):
+def get_report(job_id, influx_config=None, debug=False, plot=False, plot_width=73):
     query = None
 
     # Initialize InfluxQuery if the configuration file exists
@@ -24,11 +24,11 @@ def get_report(job_id, influx_config=None, debug=False, plot=False):
     else:
         print_stderr("Warning: InfluxDB configuration file not found")
 
-    job_report = JobReport(job_id, query, plot)
+    job_report = JobReport(job_id, query, plot, plot_width)
     return job_report
 
 
-def main(job_id, epilog=False, influx_config=None, debug=False, plot=False):
+def main(job_id, epilog=False, influx_config=None, debug=False, plot=False, plot_width=73):
     raw_id = JobReport.get_raw_id(job_id)
     stdout_file = None
     batch_host = None
@@ -60,7 +60,7 @@ def main(job_id, epilog=False, influx_config=None, debug=False, plot=False):
         return
 
     # Create job report
-    job_report = get_report(job_id, influx_config, debug, plot)
+    job_report = get_report(job_id, influx_config, debug, plot, plot_width)
 
     # Do nothing if in epilog mode and the job hasn't finished
     if epilog and not job_report.finished:
@@ -121,12 +121,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p",
         "--plot",
-        "--plot-width",
-        nargs="?",
-        type=int,
-        const=True,
+        action="store_true",
         default=False,
-        help="Generate plots for the job report (optionally specify a plot width)",
+        help="Generate plots for the job report",
+    )
+    parser.add_argument(
+        "-w",
+        "--plot-width",
+        type=int,
+        default=-1,
+        help="Specify the plot width (default: -1, negative for auto width) [only works with --plot]",
     )
 
     args = parser.parse_args()
@@ -139,7 +143,7 @@ if __name__ == "__main__":
     try:
         # Ensure the code does not hang
         with Timeout(int(args.timeout)):
-            main(args.job_id, args.epilog, args.influx_config, args.debug, args.plot)
+            main(args.job_id, args.epilog, args.influx_config, args.debug, args.plot, args.plot_width)
 
     # Print exception tracebacks if in debug mode
     except Exception:

@@ -8,11 +8,12 @@ from utils import humansize, seconds_to_str, percentage_bar, resample, pretty_ti
 
 
 UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
-
+TERMINAL_SIZE = shutil.get_terminal_size(fallback=(73, 22))
+PLOT_ASPECT_RATIO = 22/73
 
 class JobReport:
 
-    def __init__(self, job_id, influxquery=None, plot=False):
+    def __init__(self, job_id, influxquery=None, plot=False, plot_width=TERMINAL_SIZE.columns):
         self.job_id = job_id
         self.raw_id = self.get_raw_id(str(job_id))
         self.db_data = pyslurm.db.Job.load(self.raw_id)
@@ -64,13 +65,12 @@ class JobReport:
 
         self.heading_width = 14
 
-        if plot and type(plot) is int:
-            self.plot_width = plot
-            self.plot_height = 0.3 * self.plot_width
+        if plot_width < 0:
+            self.plot_width = 0.8 * TERMINAL_SIZE.columns
+            self.plot_height = 0.8 * TERMINAL_SIZE.lines
         else:
-            terminal_size = shutil.get_terminal_size(fallback=(73/0.8, 22/0.8))
-            self.plot_width = 0.8 * terminal_size.columns
-            self.plot_height = 0.8 * terminal_size.lines
+            self.plot_width = plot_width
+            self.plot_height = PLOT_ASPECT_RATIO * self.plot_width
 
     def __str__(self):
         return self.get_full_report()
