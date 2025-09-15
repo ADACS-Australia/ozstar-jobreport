@@ -1,7 +1,10 @@
+import shutil
 import pyslurm
+import numpy as np
+import plotext
 
 from tabulate import tabulate
-from utils import humansize, seconds_to_str, percentage_bar
+from utils import humansize, seconds_to_str, percentage_bar, resample, pretty_time
 
 
 UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
@@ -9,7 +12,7 @@ UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
 
 class JobReport:
 
-    def __init__(self, job_id, influxquery=None):
+    def __init__(self, job_id, influxquery=None, plot=False):
         self.job_id = job_id
         self.raw_id = self.get_raw_id(str(job_id))
         self.db_data = pyslurm.db.Job.load(self.raw_id)
@@ -48,7 +51,26 @@ class JobReport:
         self.warnings = self.get_warnings()
         self.report_data["warnings"] = self.warnings
 
+        if plot and self.influxquery is not None:
+            self.plot_data = {}
+            dataseries = self.influxquery.get_cpu_series(self.influxid)
+            if dataseries is not None:
+                self.plot_data["cpu"] = dataseries
+            dataseries = self.influxquery.get_gpu_series(self.influxid)
+            if dataseries is not None:
+                self.plot_data["gpu"] = dataseries
+        else:
+            self.plot_data = None
+
         self.heading_width = 14
+
+        if plot and type(plot) is int:
+            self.plot_width = plot
+            self.plot_height = 0.3 * self.plot_width
+        else:
+            terminal_size = shutil.get_terminal_size(fallback=(73/0.8, 22/0.8))
+            self.plot_width = 0.8 * terminal_size.columns
+            self.plot_height = 0.8 * terminal_size.lines
 
     def __str__(self):
         return self.get_full_report()
@@ -193,6 +215,31 @@ class JobReport:
                 warnings += ["Too much time requested"]
 
         return warnings
+
+    def generate_plots(self):
+
+        plots = {}
+
+        if self.plot_data is None:
+            return plots
+
+        for key, series in self.plot_data.items():
+            if series is not None:
+                x, tunit = pretty_time(series['time'])
+                y = series['value']
+                x = resample(x, self.plot_width*2)
+                y = resample(y, self.plot_width*2)
+
+                plotext.clear_figure()
+                plotext.ylim(0,100)
+                plotext.plotsize(self.plot_width, self.plot_height)
+                plotext.plot(x, y, color='black')
+                plotext.theme('clear')
+                plotext.title(f"[ % {key.upper()} USAGE ]")
+                plotext.xlabel(f'Time ({tunit})')
+                plots[key] = plotext.build()
+
+        return plots
 
     @staticmethod
     def get_raw_id(job_id):
@@ -404,5 +451,10 @@ class JobReport:
             + [f"| {line.ljust(max_len)} |" for line in lines]
             + [bottom_border]
         )
+
+        if self.plot_data is not None:
+            linebreak = '\n\n'
+            report += linebreak
+            report += linebreak.join(self.generate_plots().values())
 
         return report
