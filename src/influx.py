@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from datetime import datetime
 from influxdb_client import InfluxDBClient
 
@@ -257,6 +258,45 @@ class InfluxQuery:
 
         return data
 
+    def get_avg_usage(self, job_id, measurement_type="cpu"):
+        """
+        Query InfluxDB for CPU or GPU usage statistics and calculate the average.
+
+        Args:
+            job_id: The job ID to query for
+            measurement_type (str): Type of measurement to get ("cpu" or "gpu")
+
+        Returns:
+            float: Average usage percentage, or None if no data found
+
+        Raises:
+            ValueError: If measurement_type is not "cpu" or "gpu"
+        """
+        if measurement_type == "cpu":
+            measurement = "average_cpu_usage"
+        elif measurement_type == "gpu":
+            measurement = "average_gpu_usage"
+        else:
+            raise ValueError(f"measurement_type must be 'cpu' or 'gpu', got '{measurement_type}'")
+
+        job_query = f"""
+        from(bucket: "{self.get_bucket()}")
+        |> range({self.search_window_str})
+        |> filter(fn: (r) => r["_measurement"] == "{measurement}")
+        |> filter(fn: (r) => r["job_id"] == "{job_id}")
+        |> mean()
+        """
+
+        job_results = self.query(job_query)
+
+        if len(job_results) > 0:
+            result = job_results[0].records[0].get_value()
+            if self.verbose:
+                print(f"(get_avg_usage) {measurement_type} result: ", result)
+            return result
+        else:
+            return None
+
     def get_avg_cpu(self, job_id):
         """
         Query InfluxDB for CPU usage statistics and calculate the average.
@@ -267,24 +307,7 @@ class InfluxQuery:
         Returns:
             float: Average CPU usage percentage, or None if no data found
         """
-
-        job_query = f"""
-        from(bucket: "{self.get_bucket()}")
-        |> range({self.search_window_str})
-        |> filter(fn: (r) => r["_measurement"] == "average_cpu_usage")
-        |> filter(fn: (r) => r["job_id"] == "{job_id}")
-        |> mean()
-        """
-
-        job_results = self.query(job_query)
-
-        if len(job_results) > 0:
-            result = job_results[0].records[0].get_value()
-            if self.verbose:
-                print("(get_avg_cpu) result: ", result)
-            return result
-        else:
-            return None
+        return self.get_avg_usage(job_id, "cpu")
 
     def get_avg_gpu(self, job_id):
         """
@@ -296,21 +319,86 @@ class InfluxQuery:
         Returns:
             float: Average GPU usage percentage, or None if no data found
         """
+        return self.get_avg_usage(job_id, "gpu")
+
+    def get_usage_series(self, job_id, measurement_type="cpu"):
+        """
+        Query InfluxDB for CPU or GPU usage time series data.
+
+        Args:
+            job_id: The job ID to query for
+            measurement_type (str): Type of measurement to get ("cpu" or "gpu")
+
+        Returns:
+            dict: Dictionary containing 'time' (timestamps as int64) and 'value' (usage as float64) numpy arrays,
+                  or None if no data found
+
+        Raises:
+            ValueError: If measurement_type is not "cpu" or "gpu"
+        """
+        if measurement_type == "cpu":
+            measurement = "average_cpu_usage"
+        elif measurement_type == "gpu":
+            measurement = "average_gpu_usage"
+        else:
+            raise ValueError(f"measurement_type must be 'cpu' or 'gpu', got '{measurement_type}'")
 
         job_query = f"""
         from(bucket: "{self.get_bucket()}")
         |> range({self.search_window_str})
-        |> filter(fn: (r) => r["_measurement"] == "average_gpu_usage")
+        |> filter(fn: (r) => r["_measurement"] == "{measurement}")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
-        |> mean()
+        |> filter(fn: (r) => r["_field"] == "value")
+        |> keep(columns: ["_time", "_value"])
         """
 
         job_results = self.query(job_query)
 
         if len(job_results) > 0:
-            result = job_results[0].records[0].get_value()
+            # Count total records first
+            total_records = sum(len(table.records) for table in job_results)
+
+            # Pre-allocate numpy arrays with appropriate dtypes
+            timestamps = np.empty(total_records, dtype=np.int64)
+            values = np.empty(total_records, dtype=np.float64)
+
+            i = 0
+            for table in job_results:
+                for record in table.records:
+                    timestamps[i] = int(record.get_time().timestamp())
+                    values[i] = record.get_value()
+                    i += 1
+
+            result = {"time": timestamps, "value": values}
             if self.verbose:
-                print("(get_avg_gpu) result: ", result)
+                print(f"(get_usage_series) {measurement_type} result:")
+                print(result)
             return result
         else:
             return None
+
+    def get_cpu_series(self, job_id):
+        """
+        Query InfluxDB for CPU usage time series data.
+
+        Args:
+            job_id: The job ID to query for
+
+        Returns:
+            dict: Dictionary containing 'time' (timestamps as int64) and 'value' (CPU usage as float64) numpy arrays,
+                  or None if no data found
+        """
+        return self.get_usage_series(job_id, "cpu")
+
+    def get_gpu_series(self, job_id):
+        """
+        Query InfluxDB for GPU usage time series data.
+
+        Args:
+            job_id: The job ID to query for
+
+        Returns:
+            dict: Dictionary containing 'time' (timestamps as int64) and 'value' (GPU usage as float64) numpy arrays,
+                  or None if no data found
+        """
+        return self.get_usage_series(job_id, "gpu")
