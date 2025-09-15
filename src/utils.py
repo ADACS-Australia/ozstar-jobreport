@@ -3,6 +3,8 @@ import pyslurm
 import traceback
 import sys
 
+import numpy as np
+
 
 def print_stderr(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -72,3 +74,65 @@ class Timeout:
 
     def __exit__(self, type, value, traceback):
         signal.alarm(0)
+
+
+def resample(y, n_points):
+    """
+    Resamples a 1D array to a new number of points using linear interpolation.
+
+    Args:
+        y (array-like): The input 1D array of data.
+        n_points (int): The desired number of points in the output array.
+
+    Returns:
+        np.ndarray: The resampled array.
+    """
+    y = np.asarray(y)
+    assert y.ndim == 1, "Input array must be one-dimensional."
+
+    norig = len(y)
+    npoints = int(n_points)
+
+    # Need at least 2 points
+    assert norig > 1, "Original array must have more than 1 point."
+    assert npoints > 1, "n_points must be greater than 1."
+
+    if npoints != norig:
+        # Create the x-coordinates for the original and new arrays
+        x_old = np.linspace(0, 1, norig)
+        x_new = np.linspace(0, 1, npoints)
+        return np.interp(x_new, x_old, y)
+    else:
+        # If the number of points is the same, return a copy
+        return y.copy()
+
+
+def pretty_time(t):
+    """
+    Convert timestamps to relative time with appropriate units (sec, mins, hrs, days).
+
+    Args:
+        t (array-like): Array of timestamps in seconds
+
+    Returns:
+        tuple: (relative_time_array, unit_string)
+    """
+    minute = 60
+    hour = 60*minute
+    day = 24*hour
+    x = t - t[0]
+    tunit = "sec"
+
+    assert x[-1] >= 0
+
+    if x[-1] > 2*day:
+        x = x / day
+        tunit = "days"
+    elif x[-1] > 2*hour:
+        x = x / hour
+        tunit = "hrs"
+    elif x[-1] > 2*minute:
+        x = x / minute
+        tunit = "mins"
+
+    return x, tunit
