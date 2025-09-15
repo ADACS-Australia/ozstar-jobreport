@@ -26,7 +26,13 @@ class JobReport:
 
         # Note: "start" and "end" times are Unix timestamps in seconds
         if self.influxquery is not None:
-            self.influxquery.set_search_window(self.db_data.start_time, self.db_data.end_time)
+            start = self.db_data.start_time
+            end = self.db_data.end_time
+            # Never search for a period longer than DEFAULT_SEARCH_WINDOW
+            # Useful as a fallback in case of "runaway" jobs
+            if (end is None) or (end - start > self.influxquery.DEFAULT_SEARCH_WINDOW):
+                end = start + self.influxquery.DEFAULT_SEARCH_WINDOW
+            self.influxquery.set_search_window(start, end)
 
         self.report_data = {
             "state": self.db_data.state,
