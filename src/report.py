@@ -227,6 +227,8 @@ class JobReport:
             if series is not None:
                 x, tunit = pretty_time(series['time'])
                 y = series['value']
+                # Resample to 2x the plot width, since the ascii characters used for plotting
+                # can represent roughly two points each
                 x = resample(x, self.plot_width*2)
                 y = resample(y, self.plot_width*2)
 
