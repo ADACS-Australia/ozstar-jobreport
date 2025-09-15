@@ -229,8 +229,7 @@ class JobReport:
                 y = series['value']
                 # Resample to 2x the plot width, since the ascii characters used for plotting
                 # can represent roughly two points each
-                x = resample(x, self.plot_width*2)
-                y = resample(y, self.plot_width*2)
+                x, y = resample(x, y, self.plot_width*2)
 
                 plotext.clear_figure()
                 plotext.ylim(0,100)

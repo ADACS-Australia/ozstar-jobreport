@@ -76,35 +76,35 @@ class Timeout:
         signal.alarm(0)
 
 
-def resample(y, n_points):
+def resample(x, y, n_points):
     """
-    Resamples a 1D array to a new number of points using linear interpolation.
+    Resamples 1D arrays to a new number of points using linear interpolation.
 
     Args:
-        y (array-like): The input 1D array of data.
-        n_points (int): The desired number of points in the output array.
+        x (array-like): The x-coordinates (e.g., time values).
+        y (array-like): The y-coordinates (e.g., data values).
+        n_points (int): The desired number of points in the output arrays.
 
     Returns:
-        np.ndarray: The resampled array.
+        tuple: (x_resampled, y_resampled) as numpy arrays.
     """
+    x = np.asarray(x)
     y = np.asarray(y)
-    assert y.ndim == 1, "Input array must be one-dimensional."
+
+    assert x.ndim == 1, "Input x array must be one-dimensional."
+    assert y.ndim == 1, "Input y array must be one-dimensional."
+    assert len(x) == len(y), "x and y arrays must have the same length."
 
     norig = len(y)
     npoints = int(n_points)
 
-    # Need at least 2 points
-    assert norig > 1, "Original array must have more than 1 point."
-    assert npoints > 1, "n_points must be greater than 1."
-
-    if npoints != norig:
-        # Create the x-coordinates for the original and new arrays
-        x_old = np.linspace(0, 1, norig)
-        x_new = np.linspace(0, 1, npoints)
-        return np.interp(x_new, x_old, y)
+    if norig > 1 and npoints > 1:
+        # Create new x-coordinates spanning the original range
+        x_new = np.linspace(x[0], x[-1], npoints)
+        y_new = np.interp(x_new, x, y)
+        return x_new, y_new
     else:
-        # If the number of points is the same, return a copy
-        return y.copy()
+        return x.copy(), y.copy()
 
 
 def pretty_time(t):
