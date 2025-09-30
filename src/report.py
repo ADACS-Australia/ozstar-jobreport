@@ -234,7 +234,7 @@ class JobReport:
                 plotext.clear_figure()
                 plotext.ylim(0,100)
                 plotext.plotsize(self.plot_width, self.plot_height)
-                plotext.plot(x, y, color='black')
+                plotext.plot(x, y, color='default')
                 plotext.theme('clear')
                 plotext.title(f"[ % {key.upper()} USAGE ]")
                 plotext.xlabel(f'Time ({tunit})')
