@@ -333,8 +333,8 @@ class InfluxQuery:
             measurement_type (str): Type of measurement to get ("cpu" or "gpu")
 
         Returns:
-            dict: Dictionary containing 'time' (timestamps as int64) and 'value' (usage as float64) numpy arrays,
-                  or None if no data found
+            pandas.DataFrame: DataFrame indexed by Unix timestamp (seconds), with a column for usage values,
+                              or None if no data found
 
         Raises:
             ValueError: If measurement_type is not "cpu" or "gpu"
