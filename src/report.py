@@ -52,6 +52,13 @@ class JobReport:
         self.warnings = self.get_warnings()
         self.report_data["warnings"] = self.warnings
 
+        self.fs_names = {
+            "dagg": "/fred",
+            "home": "/home",
+            "apps": "/apps",
+            "images": "OS",
+        }
+
         if plot and self.influxquery is not None:
             self.plot_data = {}
             dataseries = self.influxquery.get_cpu_series(self.influxid)
@@ -232,11 +239,12 @@ class JobReport:
                 x, y = resample(x, y, self.plot_width*2)
 
                 plotext.clear_figure()
+                title = key.upper()
                 plotext.ylim(0,100)
                 plotext.plotsize(self.plot_width, self.plot_height)
                 plotext.plot(x, y, color='default')
                 plotext.theme('clear')
-                plotext.title(f"[ % {key.upper()} USAGE ]")
+                plotext.title(f"[ % {title} USAGE ]")
                 plotext.xlabel(f'Time ({tunit})')
                 plots[key] = plotext.build()
 
@@ -285,17 +293,11 @@ class JobReport:
         if data == {} or data is None:
             lustre_string = "  No data available"
         else:
-            fs_names = {
-                "dagg": "/fred",
-                "home": "/home",
-                "apps": "/apps",
-                "images": "OS",
-            }
             table = []
             for fs in data:
                 table += [
                     [
-                        fs_names[fs],
+                        self.fs_names.get(fs, fs),
                         humansize(data[fs]["total_read"]),
                         humansize(data[fs]["total_write"]),
                         humansize(data[fs]["total_iops"], bytes=False),
