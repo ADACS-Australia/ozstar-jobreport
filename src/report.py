@@ -63,13 +63,13 @@ class JobReport:
         }
 
         if self.plot:
-            self.plot_data = {}
-            df = self.influxquery.get_cpu_series(self.influxid)
-            if df is not None:
-                self.plot_data["cpu"] = df
-            df = self.influxquery.get_gpu_series(self.influxid)
-            if df is not None:
-                self.plot_data["gpu"] = df
+            self.plot_data = {
+                "cpu": self.influxquery.get_cpu_series(self.influxid),
+                "gpu": self.influxquery.get_gpu_series(self.influxid),
+                "lustre_read": None,
+                "lustre_write": None,
+                "lustre_iops": None,
+            }
         else:
             self.plot_data = None
 
@@ -464,9 +464,11 @@ class JobReport:
             + [bottom_border]
         )
 
-        if self.plot_data is not None:
-            linebreak = '\n\n'
-            report += linebreak
-            report += linebreak.join(self.generate_plots().values())
+        if self.plot:
+            plots = self.generate_plots().values()
+            if len(plots) > 0:
+                linebreak = '\n\n'
+                report += linebreak
+                report += linebreak.join(plots)
 
         return report
