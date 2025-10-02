@@ -3,6 +3,7 @@ import pyslurm
 import numpy as np
 import plotext
 
+from itertools import cycle
 from tabulate import tabulate
 from utils import humansize, seconds_to_str, percentage_bar, resample, pretty_time
 
@@ -27,6 +28,8 @@ class JobReport:
 
         self.finished = self.db_data.state not in UNFINISHED_STATES
         self.influxquery = influxquery
+
+        self.plot = plot and (self.influxquery is not None)
 
         # Note: "start" and "end" times are Unix timestamps in seconds
         if self.influxquery is not None:
@@ -59,7 +62,7 @@ class JobReport:
             "images": "OS",
         }
 
-        if plot and self.influxquery is not None:
+        if self.plot:
             self.plot_data = {}
             df = self.influxquery.get_cpu_series(self.influxid)
             if df is not None:
@@ -232,24 +235,29 @@ class JobReport:
 
         for key, df in self.plot_data.items():
             if df is not None:
-                t, tunit = pretty_time(df.index.values)
-                plotext.clear_figure()
-                plotext.ylim(0,100)
-                plotext.plotsize(self.plot_width, self.plot_height)
-                plotext.theme('clear')
-                plotext.title(f"[ % {key.upper()} USAGE ]")
-                plotext.xlabel(f'Time ({tunit})')
-
-                for column in df.columns.tolist():
-                    # Resample to 2x the plot width, since the ascii characters used for plotting
-                    # can represent roughly two points each
-                    x, y = resample(t, df[column].values, self.plot_width*2)
-                    plotext.plot(x, y, color='default', label=key)
-
-                # Save the plot as a string
-                plots[key] = plotext.build()
+                plots[key] = self._make_plot(df, title=key.upper(), ylims=(0,100))
 
         return plots
+
+    def _make_plot(self, df, title="", ylims=(0,100), colours=['default']):
+        colour = cycle(colours)
+        t, tunit = pretty_time(df.index.values)
+        plotext.clear_figure()
+        if ylims is not None:
+            plotext.ylim(*ylims)
+        plotext.plotsize(self.plot_width, self.plot_height)
+        plotext.theme('clear')
+        plotext.title(title)
+        plotext.xlabel(f'Time ({tunit})')
+
+        for column in df.columns.tolist():
+            # Resample to 2x the plot width, since the ascii characters used for plotting
+            # can represent roughly two points each
+            x, y = resample(t, df[column].values, self.plot_width*2)
+            plotext.plot(x, y, color=next(colour), label=column)
+
+        # Save the plot as a string
+        return plotext.build()
 
     @staticmethod
     def get_raw_id(job_id):

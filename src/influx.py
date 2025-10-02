@@ -359,10 +359,8 @@ class InfluxQuery:
 
         df = self.query(job_query, data_frame=True)
 
-        if df is None:
-            return None
-
-        if len(df) < 1:
+        # Return None if no data
+        if df is None or len(df) == 0:
             return None
 
         df = df.drop(columns=['result', 'table'], errors='ignore')
