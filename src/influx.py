@@ -165,7 +165,7 @@ class InfluxQuery:
         """
         return self.get_bucket("lustre")
 
-    def query(self, job_query):
+    def query(self, job_query, data_frame=False):
         """
         Execute a query against the InfluxDB database.
 
@@ -178,7 +178,10 @@ class InfluxQuery:
         if self.verbose:
             print("Executing query:")
             print(job_query)
-        return self.influx_query_api.query(job_query)
+        if data_frame:
+            return self.influx_query_api.query_data_frame(job_query)
+        else:
+            return self.influx_query_api.query(job_query)
 
     def get_max_mem(self, job_id):
         """
