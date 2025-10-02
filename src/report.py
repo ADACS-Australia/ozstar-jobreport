@@ -61,12 +61,12 @@ class JobReport:
 
         if plot and self.influxquery is not None:
             self.plot_data = {}
-            dataseries = self.influxquery.get_cpu_series(self.influxid)
-            if dataseries is not None:
-                self.plot_data["cpu"] = dataseries
-            dataseries = self.influxquery.get_gpu_series(self.influxid)
-            if dataseries is not None:
-                self.plot_data["gpu"] = dataseries
+            df = self.influxquery.get_cpu_series(self.influxid)
+            if df is not None:
+                self.plot_data["cpu"] = df
+            df = self.influxquery.get_gpu_series(self.influxid)
+            if df is not None:
+                self.plot_data["gpu"] = df
         else:
             self.plot_data = None
 
@@ -230,22 +230,23 @@ class JobReport:
         if self.plot_data is None:
             return plots
 
-        for key, series in self.plot_data.items():
-            if series is not None:
-                x, tunit = pretty_time(series['time'])
-                y = series['value']
-                # Resample to 2x the plot width, since the ascii characters used for plotting
-                # can represent roughly two points each
-                x, y = resample(x, y, self.plot_width*2)
-
+        for key, df in self.plot_data.items():
+            if df is not None:
+                t, tunit = pretty_time(df.index.values)
                 plotext.clear_figure()
-                title = key.upper()
                 plotext.ylim(0,100)
                 plotext.plotsize(self.plot_width, self.plot_height)
-                plotext.plot(x, y, color='default')
                 plotext.theme('clear')
-                plotext.title(f"[ % {title} USAGE ]")
+                plotext.title(f"[ % {key.upper()} USAGE ]")
                 plotext.xlabel(f'Time ({tunit})')
+
+                for column in df.columns.tolist():
+                    # Resample to 2x the plot width, since the ascii characters used for plotting
+                    # can represent roughly two points each
+                    x, y = resample(t, df[column].values, self.plot_width*2)
+                    plotext.plot(x, y, color='default', label=key)
+
+                # Save the plot as a string
                 plots[key] = plotext.build()
 
         return plots

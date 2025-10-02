@@ -352,33 +352,31 @@ class InfluxQuery:
         |> filter(fn: (r) => r["_measurement"] == "{measurement}")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
         |> filter(fn: (r) => r["_field"] == "value")
-        |> keep(columns: ["_time", "_value"])
+        |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> rename(columns: {{value: "{measurement_type}"}})
+        |> keep(columns: ["_time", "{measurement_type}"])
         """
 
-        job_results = self.query(job_query)
+        df = self.query(job_query, data_frame=True)
 
-        if len(job_results) > 0:
-            # Count total records first
-            total_records = sum(len(table.records) for table in job_results)
-
-            # Pre-allocate numpy arrays with appropriate dtypes
-            timestamps = np.empty(total_records, dtype=np.int64)
-            values = np.empty(total_records, dtype=np.float64)
-
-            i = 0
-            for table in job_results:
-                for record in table.records:
-                    timestamps[i] = int(record.get_time().timestamp())
-                    values[i] = record.get_value()
-                    i += 1
-
-            result = {"time": timestamps, "value": values}
-            if self.verbose:
-                print(f"(get_usage_series) {measurement_type} result:")
-                print(result)
-            return result
-        else:
+        if df is None:
             return None
+
+        if len(df) < 1:
+            return None
+
+        df = df.drop(columns=['result', 'table'], errors='ignore')
+
+        # Calculate Unix time in seconds. np.int64 is used for efficiency in the nanosecond conversion.
+        df.index = df['_time'].astype(np.int64) // 10**9
+        df.drop(columns=['_time'], inplace=True)
+        df.index.name = 'time' # Rename the index
+
+        if self.verbose:
+            print("(get_usage_series)")
+            print("Result:")
+            print(df)
+        return df
 
     def get_cpu_series(self, job_id):
         """
