@@ -242,20 +242,21 @@ class JobReport:
 
         plots["GPU Usage (%)"] = self._make_plot(self.plot_data["gpu"], title="GPU Usage (%)", ylims=(0, 100))
 
+        colours = ['blue','green','red', 'default']
         if self.plot_data["lustre_read"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_read"].values))
             fac, unit = to_human(maxval, bytes=True)
-            plots["Lustre Read Rate (B/s)"] = self._make_plot(self.plot_data["lustre_read"]*fac, title=f"Lustre Read Rate ({unit}B/s)", colours=['blue','green','red'], labels=True)
+            plots["Lustre Read Rate (B/s)"] = self._make_plot(self.plot_data["lustre_read"]*fac, title=f"Lustre Read Rate ({unit}B/s)", colours=colours, labels=True)
 
         if self.plot_data["lustre_write"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_write"].values))
             fac, unit = to_human(maxval, bytes=True)
-            plots["Lustre Write Rate (B/s)"] = self._make_plot(self.plot_data["lustre_write"]*fac, title=f"Lustre Write Rate ({unit}B/s)", colours=['blue','green','red'], labels=True)
+            plots["Lustre Write Rate (B/s)"] = self._make_plot(self.plot_data["lustre_write"]*fac, title=f"Lustre Write Rate ({unit}B/s)", colours=colours, labels=True)
 
         if self.plot_data["lustre_iops"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_iops"].values))
             fac, unit = to_human(maxval)
-            plots["Lustre IOPS"] = self._make_plot(self.plot_data["lustre_iops"]*fac, title=f"Lustre IOPS ({unit}ops/s)", colours=['blue','green','red'], labels=True)
+            plots["Lustre IOPS"] = self._make_plot(self.plot_data["lustre_iops"]*fac, title=f"Lustre IOPS ({unit}ops/s)", colours=colours, labels=True)
 
         return plots
 
