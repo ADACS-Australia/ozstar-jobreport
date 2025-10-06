@@ -24,7 +24,7 @@ def get_report(job_id, influx_config=None, debug=False, plot=False, plot_width=7
     else:
         print_stderr("Warning: InfluxDB configuration file not found")
 
-    job_report = JobReport(job_id, query, plot, plot_width)
+    job_report = JobReport(job_id, query, plot, plot_width, debug)
     return job_report
 
 

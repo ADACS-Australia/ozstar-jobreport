@@ -1,8 +1,11 @@
 import time
+import warnings
 import numpy as np
 from datetime import datetime
 from influxdb_client import InfluxDBClient
+from influxdb_client.client.warnings import MissingPivotFunction
 
+warnings.simplefilter("ignore", MissingPivotFunction)
 
 class InfluxQuery:
     # # InfluxDB connection
@@ -178,8 +181,26 @@ class InfluxQuery:
         if self.verbose:
             print("Executing query:")
             print(job_query)
+
         if data_frame:
-            return self.influx_query_api.query_data_frame(job_query)
+            df = self.influx_query_api.query_data_frame(job_query)
+
+            # Return None if no data
+            if df is None or len(df) == 0:
+                return None
+
+            df = df.drop(columns=['result', 'table'], errors='ignore')
+
+            # Convert timestamp to Unix seconds and set as index
+            df.index = df['_time'].astype(np.int64) // 10**9
+            df.index = df.index - df.index[0]  # Set time=0 to start of job
+            df.index.name = 'time'
+            df = df.drop(columns=['_time'])
+
+            # sort by index (time)
+            df.sort_index(inplace=True)
+            return df
+
         else:
             return self.influx_query_api.query(job_query)
 
@@ -363,13 +384,6 @@ class InfluxQuery:
         if df is None or len(df) == 0:
             return None
 
-        df = df.drop(columns=['result', 'table'], errors='ignore')
-
-        # Calculate Unix time in seconds. np.int64 is used for efficiency in the nanosecond conversion.
-        df.index = df['_time'].astype(np.int64) // 10**9
-        df.drop(columns=['_time'], inplace=True)
-        df.index.name = 'time' # Rename the index
-
         if self.verbose:
             print("(get_usage_series)")
             print("Result:")
@@ -401,3 +415,30 @@ class InfluxQuery:
                   or None if no data found
         """
         return self.get_usage_series(job_id, "gpu")
+
+    def get_lustre_rates(self, job_id, field='read_bytes', server="oss"):
+        """Get Lustre filesystem I/O rates for a specific field + server combination."""
+
+        query = f"""
+        from(bucket: "{self.get_lustre_bucket()}")
+        |> range({self.search_window_str})
+        |> filter(fn: (r) => r["_measurement"] == "lustre")
+        |> filter(fn: (r) => r["job"] == "{job_id}")
+        |> filter(fn: (r) => r["_field"] == "{field}")
+        |> filter(fn: (r) => r["server"] == "{server}")
+        |> derivative(unit: 1s, nonNegative: false)
+        |> pivot(rowKey:["_time"], columnKey: ["fs"], valueColumn: "_value")
+        |> drop(columns: ["_start", "_stop", "_measurement", "job", "server", "_field"])
+        """
+
+        df = self.query(query, data_frame=True)
+
+        # Return None if no data
+        if df is None or len(df) == 0:
+            return None
+
+        if self.verbose:
+            print(f"(get_lustre_rates) {field} result:")
+            print(df)
+
+        return df

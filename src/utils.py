@@ -28,16 +28,34 @@ def get_live_job_data(job_id, debug=False):
             print_stderr(traceback.format_exc())
         return None
 
+def to_human(x, bytes=True):
+    """Convert a number to a human readable format, handling both SI (base 1000) and byte (base 1024) suffixes"""
+    if x == 0:
+        return 1, ''
+    units = ['', 'K', 'M', 'G', 'T', 'P']
+    # Note: To be consistent with SLURM, we use e.g. "MB" instead of "MiB"
+    if bytes:
+        i = int(np.floor(np.log2(x) / 10))
+        i = min(i, len(units) - 1)
+        fac = 1/ (1024 ** i)
+    else:
+        i = int(np.floor(np.log10(x) / 3))
+        i = min(i, len(units) - 1)
+        fac = 1/ (1000 ** i)
+    return fac, units[i]
 
 def humansize(nbytes, bytes=True):
     """Convert bytes to human readable format"""
-    suffixes = ["", "K", "M", "G", "T", "P"]
-    i = 0
-    while nbytes >= 1024 and i < len(suffixes) - 1:
-        nbytes /= 1024.0
-        i += 1
-    f = f"{nbytes:2.1f}".rstrip("0").rstrip(".")
-    return f"{f} {suffixes[i]}" + ("B" if bytes else "")
+
+    fac, units = to_human(nbytes, bytes=bytes)
+
+    # Note: To be consistent with SLURM, we use e.g. "MB" instead of "MiB"
+    if bytes:
+        units += 'B'
+
+    x = f"{nbytes*fac:2.1f}".rstrip("0").rstrip(".")
+
+    return f"{x} {units}"
 
 
 def seconds_to_str(seconds):
@@ -107,32 +125,24 @@ def resample(x, y, n_points):
         return x.copy(), y.copy()
 
 
-def pretty_time(t):
+def human_time(t):
     """
-    Convert timestamps to relative time with appropriate units (sec, mins, hrs, days).
+    Scale timestamps (seconds) to the largest reasonable time unit.
 
     Args:
-        t (array-like): Array of timestamps in seconds
+        t (array-like): timestamps in seconds
 
     Returns:
-        tuple: (relative_time_array, unit_string)
+        tuple: (scaled_array, unit_string)
     """
-    minute = 60
-    hour = 60*minute
-    day = 24*hour
-    x = t - t[0]
-    tunit = "sec"
+    x = np.asarray(t) - t[0]
+    maxval = x.max()
+    units = ['s', 'min', 'h', 'd']
+    scales = [1, 60, 3600, 86400]
 
-    assert x[-1] >= 0
+    if maxval == 0:
+        return x, 's'
 
-    if x[-1] > 2*day:
-        x = x / day
-        tunit = "days"
-    elif x[-1] > 2*hour:
-        x = x / hour
-        tunit = "hrs"
-    elif x[-1] > 2*minute:
-        x = x / minute
-        tunit = "mins"
-
-    return x, tunit
+    i = np.searchsorted([2*60, 2*3600, 2*86400], maxval, side='right')
+    fac = 1 / scales[i]
+    return fac, units[i]

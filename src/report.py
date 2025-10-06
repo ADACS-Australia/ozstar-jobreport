@@ -5,7 +5,7 @@ import plotext
 
 from itertools import cycle
 from tabulate import tabulate
-from utils import humansize, seconds_to_str, percentage_bar, resample, pretty_time
+from utils import humansize, seconds_to_str, percentage_bar, resample, to_human, human_time
 
 
 UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
@@ -14,7 +14,8 @@ PLOT_ASPECT_RATIO = 22/73
 
 class JobReport:
 
-    def __init__(self, job_id, influxquery=None, plot=False, plot_width=TERMINAL_SIZE.columns):
+    def __init__(self, job_id, influxquery=None, plot=False, plot_width=TERMINAL_SIZE.columns, verbose=False):
+        self.verbose = verbose
         self.job_id = job_id
         self.raw_id = self.get_raw_id(str(job_id))
         self.db_data = pyslurm.db.Job.load(self.raw_id)
@@ -66,9 +67,9 @@ class JobReport:
             self.plot_data = {
                 "cpu": self.influxquery.get_cpu_series(self.influxid),
                 "gpu": self.influxquery.get_gpu_series(self.influxid),
-                "lustre_read": None,
-                "lustre_write": None,
-                "lustre_iops": None,
+                "lustre_read": self.influxquery.get_lustre_rates(self.influxid, field='read_bytes', server="oss"),
+                "lustre_write": self.influxquery.get_lustre_rates(self.influxid, field='write_bytes', server="oss"),
+                "lustre_iops": self.influxquery.get_lustre_rates(self.influxid, field='iops', server="mds"),
             }
         else:
             self.plot_data = None
@@ -233,15 +234,40 @@ class JobReport:
         if self.plot_data is None:
             return plots
 
-        for key, df in self.plot_data.items():
-            if df is not None:
-                plots[key] = self._make_plot(df, title=key.upper(), ylims=(0,100))
+        plots["CPU Usage (%)"] = self._make_plot(self.plot_data["cpu"], title="CPU Usage (%)", ylims=(0, 100))
+
+        plots["GPU Usage (%)"] = self._make_plot(self.plot_data["gpu"], title="GPU Usage (%)", ylims=(0, 100))
+
+        if self.plot_data["lustre_read"] is not None:
+            maxval = np.nanmax(abs(self.plot_data["lustre_read"].values))
+            fac, unit = to_human(maxval, bytes=True)
+            plots["Lustre Read Rate (B/s)"] = self._make_plot(self.plot_data["lustre_read"]*fac, title=f"Lustre Read Rate ({unit}B/s)", colours=['blue','green','red'], labels=True)
+
+        if self.plot_data["lustre_write"] is not None:
+            maxval = np.nanmax(abs(self.plot_data["lustre_write"].values))
+            fac, unit = to_human(maxval, bytes=True)
+            plots["Lustre Write Rate (B/s)"] = self._make_plot(self.plot_data["lustre_write"]*fac, title=f"Lustre Write Rate ({unit}B/s)", colours=['blue','green','red'], labels=True)
+
+        if self.plot_data["lustre_iops"] is not None:
+            maxval = np.nanmax(abs(self.plot_data["lustre_iops"].values))
+            fac, unit = to_human(maxval)
+            plots["Lustre IOPS"] = self._make_plot(self.plot_data["lustre_iops"]*fac, title=f"Lustre IOPS ({unit} ops/s)", colours=['blue','green','red'], labels=True)
 
         return plots
 
-    def _make_plot(self, df, title="", ylims=(0,100), colours=['default']):
+    def _make_plot(self, df, title="", ylims=None, colours=['default'], labels=False):
+        if self.verbose:
+            print(f"Generating plot: {title}")
+
+        if df is None:
+            if self.verbose:
+                print(f"  No data available")
+            return None
+
         colour = cycle(colours)
-        t, tunit = pretty_time(df.index.values)
+        fac, tunit = human_time(df.index)
+        df.index = df.index * fac
+
         plotext.clear_figure()
         if ylims is not None:
             plotext.ylim(*ylims)
@@ -253,8 +279,18 @@ class JobReport:
         for column in df.columns.tolist():
             # Resample to 2x the plot width, since the ascii characters used for plotting
             # can represent roughly two points each
-            x, y = resample(t, df[column].values, self.plot_width*2)
-            plotext.plot(x, y, color=next(colour), label=column)
+            d = df[column].dropna()
+
+            # Skip empty data series after dropping nans
+            if len(d) == 0:
+                continue
+
+            x, y = resample(d.index.values, d.values, self.plot_width*2)
+            if labels:
+                label = self.fs_names.get(column, column)
+            else:
+                label = None
+            plotext.plot(x, y, color=next(colour), label=label)
 
         # Save the plot as a string
         return plotext.build()
@@ -465,7 +501,7 @@ class JobReport:
         )
 
         if self.plot:
-            plots = self.generate_plots().values()
+            plots = [p for p in self.generate_plots().values() if p is not None]
             if len(plots) > 0:
                 linebreak = '\n\n'
                 report += linebreak
