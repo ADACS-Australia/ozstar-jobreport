@@ -66,6 +66,8 @@ class JobReport:
 
         if self.plot:
             usage = self.influxquery.get_usage_series(self.influxid)
+            if usage is None:
+                usage = {}
             self.plot_data = {
                 "cpu": usage.get("average_cpu_usage", None),
                 "gpu": usage.get("average_gpu_usage", None),
