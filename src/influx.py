@@ -168,7 +168,7 @@ class InfluxQuery:
         """
         return self.get_bucket("lustre")
 
-    def query(self, job_query, data_frame=False):
+    def query(self, job_query, timeseries=False):
         """
         Execute a query against the InfluxDB database.
 
@@ -182,7 +182,7 @@ class InfluxQuery:
             print("Executing query:")
             print(job_query)
 
-        if data_frame:
+        if timeseries:
             df = self.influx_query_api.query_data_frame(job_query)
 
             # Return None if no data
@@ -378,7 +378,7 @@ class InfluxQuery:
         |> keep(columns: ["_time", "{measurement_type}"])
         """
 
-        df = self.query(job_query, data_frame=True)
+        df = self.query(job_query, timeseries=True)
 
         # Return None if no data
         if df is None or len(df) == 0:
@@ -431,7 +431,7 @@ class InfluxQuery:
         |> drop(columns: ["_start", "_stop", "_measurement", "job", "server", "_field"])
         """
 
-        df = self.query(query, data_frame=True)
+        df = self.query(query, timeseries=True)
 
         # Return None if no data
         if df is None or len(df) == 0:
