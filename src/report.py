@@ -1,6 +1,7 @@
 import shutil
 import pyslurm
 import numpy as np
+import pandas as pd
 import plotext
 
 from itertools import cycle
@@ -64,9 +65,10 @@ class JobReport:
         }
 
         if self.plot:
+            usage = self.influxquery.get_usage_series(self.influxid)
             self.plot_data = {
-                "cpu": self.influxquery.get_cpu_series(self.influxid),
-                "gpu": self.influxquery.get_gpu_series(self.influxid),
+                "cpu": usage.get("average_cpu_usage", None),
+                "gpu": usage.get("average_gpu_usage", None),
                 "lustre_read": self.influxquery.get_lustre_rates(self.influxid, field='read_bytes', server="oss"),
                 "lustre_write": self.influxquery.get_lustre_rates(self.influxid, field='write_bytes', server="oss"),
                 "lustre_iops": self.influxquery.get_lustre_rates(self.influxid, field='iops', server="mds"),
@@ -251,7 +253,7 @@ class JobReport:
         if self.plot_data["lustre_iops"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_iops"].values))
             fac, unit = to_human(maxval)
-            plots["Lustre IOPS"] = self._make_plot(self.plot_data["lustre_iops"]*fac, title=f"Lustre IOPS ({unit} ops/s)", colours=['blue','green','red'], labels=True)
+            plots["Lustre IOPS"] = self._make_plot(self.plot_data["lustre_iops"]*fac, title=f"Lustre IOPS ({unit}ops/s)", colours=['blue','green','red'], labels=True)
 
         return plots
 
@@ -263,6 +265,8 @@ class JobReport:
             if self.verbose:
                 print(f"  No data available")
             return None
+
+        df = pd.DataFrame(df)
 
         colour = cycle(colours)
         fac, tunit = human_time(df.index)

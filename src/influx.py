@@ -345,37 +345,26 @@ class InfluxQuery:
         """
         return self.get_avg_usage(job_id, "gpu")
 
-    def get_usage_series(self, job_id, measurement_type="cpu"):
+    def get_usage_series(self, job_id):
         """
         Query InfluxDB for CPU or GPU usage time series data.
 
         Args:
             job_id: The job ID to query for
-            measurement_type (str): Type of measurement to get ("cpu" or "gpu")
 
         Returns:
             pandas.DataFrame: DataFrame indexed by Unix timestamp (seconds), with a column for usage values,
                               or None if no data found
-
-        Raises:
-            ValueError: If measurement_type is not "cpu" or "gpu"
         """
-        if measurement_type == "cpu":
-            measurement = "average_cpu_usage"
-        elif measurement_type == "gpu":
-            measurement = "average_gpu_usage"
-        else:
-            raise ValueError(f"measurement_type must be 'cpu' or 'gpu', got '{measurement_type}'")
 
         job_query = f"""
         from(bucket: "{self.get_bucket()}")
         |> range({self.search_window_str})
-        |> filter(fn: (r) => r["_measurement"] == "{measurement}")
         |> filter(fn: (r) => r["job_id"] == "{job_id}")
         |> filter(fn: (r) => r["_field"] == "value")
-        |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-        |> rename(columns: {{value: "{measurement_type}"}})
-        |> keep(columns: ["_time", "{measurement_type}"])
+        |> pivot(rowKey:["_time"], columnKey: ["_measurement"], valueColumn: "_value")
+        |> keep(columns: ["_time", "average_cpu_usage", "average_gpu_usage"])
+        |> drop(columns: ["_start", "_stop", "_measurement", "job", "server", "_field"])
         """
 
         df = self.query(job_query, timeseries=True)
@@ -389,32 +378,6 @@ class InfluxQuery:
             print("Result:")
             print(df)
         return df
-
-    def get_cpu_series(self, job_id):
-        """
-        Query InfluxDB for CPU usage time series data.
-
-        Args:
-            job_id: The job ID to query for
-
-        Returns:
-            dict: Dictionary containing 'time' (timestamps as int64) and 'value' (CPU usage as float64) numpy arrays,
-                  or None if no data found
-        """
-        return self.get_usage_series(job_id, "cpu")
-
-    def get_gpu_series(self, job_id):
-        """
-        Query InfluxDB for GPU usage time series data.
-
-        Args:
-            job_id: The job ID to query for
-
-        Returns:
-            dict: Dictionary containing 'time' (timestamps as int64) and 'value' (GPU usage as float64) numpy arrays,
-                  or None if no data found
-        """
-        return self.get_usage_series(job_id, "gpu")
 
     def get_lustre_rates(self, job_id, field='read_bytes', server="oss"):
         """Get Lustre filesystem I/O rates for a specific field + server combination."""
