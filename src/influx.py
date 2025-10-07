@@ -193,12 +193,14 @@ class InfluxQuery:
 
             # Convert timestamp to Unix seconds and set as index
             df.index = df['_time'].astype(np.int64) // 10**9
+
+            # sort by index (time)
+            df.sort_index(inplace=True)
+
             df.index = df.index - df.index[0]  # Set time=0 to start of job
             df.index.name = 'time'
             df = df.drop(columns=['_time'])
 
-            # sort by index (time)
-            df.sort_index(inplace=True)
             return df
 
         else:
