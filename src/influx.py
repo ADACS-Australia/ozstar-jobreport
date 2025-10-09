@@ -168,7 +168,7 @@ class InfluxQuery:
         """
         return self.get_bucket("lustre")
 
-    def query(self, job_query, timeseries=False):
+    def query(self, job_query, timeseries=False, data_frame=False):
         """
         Execute a query against the InfluxDB database.
 
@@ -182,24 +182,26 @@ class InfluxQuery:
             print("Executing query:")
             print(job_query)
 
-        if timeseries:
+        if timeseries or data_frame:
             df = self.influx_query_api.query_data_frame(job_query)
 
             # Return None if no data
             if df is None or len(df) == 0:
                 return None
 
-            df = df.drop(columns=['result', 'table'], errors='ignore')
+            df.drop(columns=['result', 'table'], errors='ignore', inplace=True)
 
-            # Convert timestamp to Unix seconds and set as index
-            df.index = df['_time'].astype(np.int64) // 10**9
+            if timeseries:
 
-            # sort by index (time)
-            df.sort_index(inplace=True)
+                # Convert timestamp to Unix seconds and set as index
+                df.index = df['_time'].astype(np.int64) // 10**9
 
-            df.index = df.index - df.index[0]  # Set time=0 to start of job
-            df.index.name = 'time'
-            df = df.drop(columns=['_time'])
+                # sort by index (time)
+                df.sort_index(inplace=True)
+
+                df.index = df.index - df.index[0]  # Set time=0 to start of job
+                df.index.name = 'time'
+                df.drop(columns=['_time'], inplace=True)
 
             return df
 
@@ -238,51 +240,39 @@ class InfluxQuery:
             return None
 
     def get_lustre_jobstats(self, job_id):
-        """
-        Query InfluxDB for Lustre filesystem statistics for a specific job.
-
-        Args:
-            job_id: The job ID to query for
-
-        Returns:
-            dict: Nested dictionary containing Lustre statistics organized by filesystem,
-                  server type, and field with timestamp and value arrays
-        """
-
-        job_query = f"""
+        query = f"""
         from(bucket: "{self.get_lustre_bucket()}")
         |> range({self.search_window_str})
         |> filter(fn: (r) => r["_measurement"] == "lustre")
         |> filter(fn: (r) => r["job"] == "{job_id}")
+        |> filter(fn: (r) =>
+            (r["_field"] == "read_bytes" and r["server"] == "oss") or
+            (r["_field"] == "write_bytes" and r["server"] == "oss") or
+            (r["_field"] == "iops" and r["server"] == "mds")
+        )
         |> last()
+        |> drop(columns: ["_start", "_stop", "_measurement", "job", "ts", "_time", "server"])
+        |> pivot(rowKey: ["fs"], columnKey: ["_field"], valueColumn: "_value")
+        |> fill(column: "read_bytes", value: 0)
+        |> fill(column: "write_bytes", value: 0)
+        |> fill(column: "iops", value: 0)
         """
 
-        job_results = self.query(job_query)
+        df = self.query(query, data_frame=True)
 
-        data = {}
+        # Return None if no data
+        if df is None or len(df) == 0:
+            return None
 
-        for table in job_results:
-            fs = table.records[0]["fs"]
-            server = table.records[0]["server"]
-            field = table.records[0].get_field()
-
-            if fs not in data:
-                data[fs] = {}
-            if server not in data[fs]:
-                data[fs][server] = {}
-            if field not in data[fs][server]:
-                data[fs][server][field] = {"ts": [], "value": []}
-
-            for record in table:
-                ts = int(record.get_time().timestamp())
-                data[fs][server][field]["ts"] += [ts]
-                data[fs][server][field]["value"] += [record.get_value()]
+        # Move iops to the end column
+        if 'iops' in df.columns:
+            df['iops'] = df.pop('iops')
 
         if self.verbose:
             print("(get_lustre_jobstats) result:")
-            print(data)
+            print(df)
 
-        return data
+        return df
 
     def get_avg_usage(self, job_id, measurement_type="cpu"):
         """
@@ -322,30 +312,6 @@ class InfluxQuery:
             return result
         else:
             return None
-
-    def get_avg_cpu(self, job_id):
-        """
-        Query InfluxDB for CPU usage statistics and calculate the average.
-
-        Args:
-            job_id: The job ID to query for
-
-        Returns:
-            float: Average CPU usage percentage, or None if no data found
-        """
-        return self.get_avg_usage(job_id, "cpu")
-
-    def get_avg_gpu(self, job_id):
-        """
-        Query InfluxDB for GPU usage statistics and calculate the average.
-
-        Args:
-            job_id: The job ID to query for
-
-        Returns:
-            float: Average GPU usage percentage, or None if no data found
-        """
-        return self.get_avg_usage(job_id, "gpu")
 
     def get_usage_series(self, job_id):
         """

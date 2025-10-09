@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import plotext
 
+from functools import partial
 from itertools import cycle
 from tabulate import tabulate
 from utils import humansize, seconds_to_str, percentage_bar, resample, to_human, human_time
@@ -43,6 +44,13 @@ class JobReport:
                 end = start + self.influxquery.DEFAULT_SEARCH_WINDOW
             self.influxquery.set_search_window(start, end)
 
+        self.fs_names = {
+            "dagg": "/fred",
+            "home": "/home",
+            "apps": "/apps",
+            "images": "OS",
+        }
+
         self.report_data = {
             "state": self.db_data.state,
             "req_mem": self.get_req_mem_bytes(),
@@ -56,13 +64,6 @@ class JobReport:
 
         self.warnings = self.get_warnings()
         self.report_data["warnings"] = self.warnings
-
-        self.fs_names = {
-            "dagg": "/fred",
-            "home": "/home",
-            "apps": "/apps",
-            "images": "OS",
-        }
 
         if self.plot:
             usage = self.influxquery.get_usage_series(self.influxid)
@@ -147,7 +148,7 @@ class JobReport:
             return user_cpu / self.db_data.stats.elapsed_cpu_time * 100
 
         elif self.influxquery is not None:
-            return self.influxquery.get_avg_cpu(self.influxid)
+            return self.influxquery.get_avg_usage(self.influxid, "cpu")
         else:
             return None
 
@@ -160,7 +161,7 @@ class JobReport:
         """
 
         if self.influxquery is not None and "gpu" in self.db_data.partition:
-            return self.influxquery.get_avg_gpu(self.influxid)
+            return self.influxquery.get_avg_usage(self.influxid, "gpu")
         else:
             return None
 
@@ -172,26 +173,14 @@ class JobReport:
         if self.influxquery is None:
             return None
 
-        data = self.influxquery.get_lustre_jobstats(self.influxid)
+        df = self.influxquery.get_lustre_jobstats(self.influxid)
 
-        def get_last_value(fs, server, field):
-            """Get the last value, but if data is not available, return 0"""
-            try:
-                value = data[fs][server][field]["value"][-1]
-            except KeyError:
-                value = 0
-            return value
+        # Rename the filesystems
+        if df is not None and 'fs' in df.columns:
+            df['fs'] = df['fs'].map(self.fs_names)
 
-        lustre_stats = {}
+        return df
 
-        for fs in list(data.keys()):
-            lustre_stats[fs] = {}
-
-            lustre_stats[fs]["total_read"] = get_last_value(fs, "oss", "read_bytes")
-            lustre_stats[fs]["total_write"] = get_last_value(fs, "oss", "write_bytes")
-            lustre_stats[fs]["total_iops"] = get_last_value(fs, "mds", "iops")
-
-        return lustre_stats
 
     def get_warnings(self):
         """
@@ -340,26 +329,29 @@ class JobReport:
         Construct a report of the Lustre usage
         """
 
-        data = self.report_data["lustre_stats"]
+        df = self.report_data["lustre_stats"]
 
-        if data == {} or data is None:
+        if df is None or len(df) == 0 :
             lustre_string = "  No data available"
         else:
-            table = []
-            for fs in data:
-                table += [
-                    [
-                        self.fs_names.get(fs, fs),
-                        humansize(data[fs]["total_read"]),
-                        humansize(data[fs]["total_write"]),
-                        humansize(data[fs]["total_iops"], bytes=False),
-                    ]
-                ]
 
-            table = tabulate(
-                table,
-                headers=["Path", "Total Read", "Total Write", "Total IOPS"],
-            )
+            # Make numbers human readable
+            df['iops'] = df['iops'].apply(partial(humansize, bytes=False))
+            for i in ['read_bytes', 'write_bytes']:
+                df[i] = df[i].apply(humansize)
+
+            # Mapping from original column names to display names
+            header_map = {
+                'fs': 'Path',
+                'iops': 'Total IOPS',
+                'read_bytes': 'Total Read',
+                'write_bytes': 'Total Write'
+            }
+
+            # Create list of headers in order of df columns
+            headers = [header_map.get(col, col) for col in df.columns]
+
+            table = tabulate(df, headers=headers, showindex=False)
             indent = 2 * " "
             lustre_string = indent + table.replace("\n", "\n" + indent)
 
