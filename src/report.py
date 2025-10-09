@@ -66,15 +66,14 @@ class JobReport:
         self.report_data["warnings"] = self.warnings
 
         if self.plot:
-            usage = self.influxquery.get_usage_series(self.influxid)
-            if usage is None:
-                usage = {}
+            usage_series = self.get_usage_series()
+            lustre_rates = self.get_lustre_rates()
             self.plot_data = {
-                "cpu": usage.get("average_cpu_usage", None),
-                "gpu": usage.get("average_gpu_usage", None),
-                "lustre_read": self.influxquery.get_lustre_rates(self.influxid, field='read_bytes', server="oss"),
-                "lustre_write": self.influxquery.get_lustre_rates(self.influxid, field='write_bytes', server="oss"),
-                "lustre_iops": self.influxquery.get_lustre_rates(self.influxid, field='iops', server="mds"),
+                "cpu": usage_series.get("average_cpu_usage", None),
+                "gpu": usage_series.get("average_gpu_usage", None),
+                "lustre_read": lustre_rates.get("read", None),
+                "lustre_write": lustre_rates.get("write", None),
+                "lustre_iops": lustre_rates.get("iops", None),
             }
         else:
             self.plot_data = None
@@ -165,6 +164,12 @@ class JobReport:
         else:
             return None
 
+    def get_usage_series(self):
+        usage = self.influxquery.get_usage_series(self.influxid)
+        if usage is None:
+            usage = {}
+        return usage
+
     def get_lustre_stats(self):
         """
         Get the Lustre stats for the job
@@ -181,6 +186,16 @@ class JobReport:
 
         return df
 
+    def get_lustre_rates(self):
+        rates = {}
+
+        for item in ('read', 'write', 'iops'):
+            df = self.influxquery.get_lustre_rates(self.influxid, item)
+            if df is not None:
+                df.rename(columns=self.fs_names, inplace=True)
+            rates[item] = df
+
+        return rates
 
     def get_warnings(self):
         """
@@ -222,30 +237,30 @@ class JobReport:
 
     def generate_plots(self):
 
-        plots = {}
+        plots = []
 
         if self.plot_data is None:
             return plots
 
-        plots["CPU Usage (%)"] = self._make_plot(self.plot_data["cpu"], title="CPU Usage (%)", ylims=(0, 100))
+        plots.append(self._make_plot(self.plot_data["cpu"], title="CPU Usage (%)", ylims=(0, 100)))
 
-        plots["GPU Usage (%)"] = self._make_plot(self.plot_data["gpu"], title="GPU Usage (%)", ylims=(0, 100))
+        plots.append(self._make_plot(self.plot_data["gpu"], title="GPU Usage (%)", ylims=(0, 100)))
 
         colours = ['blue','green','red', 'default']
         if self.plot_data["lustre_read"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_read"].values))
             fac, unit = to_human(maxval, bytes=True)
-            plots["Lustre Read Rate (B/s)"] = self._make_plot(self.plot_data["lustre_read"]*fac, title=f"Lustre Read Rate ({unit}B/s)", colours=colours, labels=True)
+            plots.append(self._make_plot(self.plot_data["lustre_read"]*fac, title=f"Lustre Read Rate ({unit}B/s)", colours=colours, labels=True))
 
         if self.plot_data["lustre_write"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_write"].values))
             fac, unit = to_human(maxval, bytes=True)
-            plots["Lustre Write Rate (B/s)"] = self._make_plot(self.plot_data["lustre_write"]*fac, title=f"Lustre Write Rate ({unit}B/s)", colours=colours, labels=True)
+            plots.append(self._make_plot(self.plot_data["lustre_write"]*fac, title=f"Lustre Write Rate ({unit}B/s)", colours=colours, labels=True))
 
         if self.plot_data["lustre_iops"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_iops"].values))
             fac, unit = to_human(maxval)
-            plots["Lustre IOPS"] = self._make_plot(self.plot_data["lustre_iops"]*fac, title=f"Lustre IOPS ({unit}ops/s)", colours=colours, labels=True)
+            plots.append(self._make_plot(self.plot_data["lustre_iops"]*fac, title=f"Lustre IOPS ({unit}ops/s)", colours=colours, labels=True))
 
         return plots
 
@@ -283,7 +298,7 @@ class JobReport:
 
             x, y = resample(d.index.values, d.values, self.plot_width*2)
             if labels:
-                label = self.fs_names.get(column, column)
+                label = column
             else:
                 label = None
             plotext.plot(x, y, color=next(colour), label=label)
@@ -500,7 +515,7 @@ class JobReport:
         )
 
         if self.plot:
-            plots = [p for p in self.generate_plots().values() if p is not None]
+            plots = [p for p in self.generate_plots() if p is not None]
             if len(plots) > 0:
                 linebreak = '\n\n'
                 report += linebreak

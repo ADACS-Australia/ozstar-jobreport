@@ -347,16 +347,27 @@ class InfluxQuery:
             print(df)
         return df
 
-    def get_lustre_rates(self, job_id, field='read_bytes', server="oss"):
+    def get_lustre_rates(self, job_id, measurement_type):
         """Get Lustre filesystem I/O rates for a specific field + server combination."""
+
+        measurements = {
+            'read': '(r["_field"] == "read_bytes" and r["server"] == "oss")',
+            'write': '(r["_field"] == "write_bytes" and r["server"] == "oss")',
+            'iops': '(r["_field"] == "iops" and r["server"] == "mds")',
+        }
+
+        m = measurements.get(measurement_type, None)
+
+        if m is None:
+            words = [f"'{w}'" for w in measurements.keys()]
+            raise ValueError(f"measurement_type must be one of: {', '.join(words)}. Got '{measurement_type}'")
 
         query = f"""
         from(bucket: "{self.get_lustre_bucket()}")
         |> range({self.search_window_str})
         |> filter(fn: (r) => r["_measurement"] == "lustre")
         |> filter(fn: (r) => r["job"] == "{job_id}")
-        |> filter(fn: (r) => r["_field"] == "{field}")
-        |> filter(fn: (r) => r["server"] == "{server}")
+        |> filter(fn: (r) => {m} )
         |> derivative(unit: 1s, nonNegative: false)
         |> pivot(rowKey:["_time"], columnKey: ["fs"], valueColumn: "_value")
         |> drop(columns: ["_start", "_stop", "_measurement", "job", "server", "_field"])
@@ -369,7 +380,7 @@ class InfluxQuery:
             return None
 
         if self.verbose:
-            print(f"(get_lustre_rates) {field} result:")
+            print(f"(get_lustre_rates) {measurement_type} result:")
             print(df)
 
         return df
