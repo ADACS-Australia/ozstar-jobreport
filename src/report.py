@@ -1,13 +1,11 @@
 import shutil
 import pyslurm
 import numpy as np
-import pandas as pd
-import plotext
 
 from functools import partial
-from itertools import cycle
 from tabulate import tabulate
-from utils import humansize, seconds_to_str, percentage_bar, resample, to_human, human_time
+from utils import humansize, seconds_to_str, percentage_bar, to_human
+from plotting import make_ascii_plot
 
 
 UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
@@ -242,69 +240,46 @@ class JobReport:
         if self.plot_data is None:
             return plots
 
-        plots.append(self._make_plot(self.plot_data["cpu"], title="CPU Usage (%)", ylims=(0, 100)))
+        pw = self.plot_width
+        ph = self.plot_height
 
-        plots.append(self._make_plot(self.plot_data["gpu"], title="GPU Usage (%)", ylims=(0, 100)))
+        ylims = (0,100)
+        labels = False
+        colours = ['default']
+
+        df = self.plot_data["cpu"]
+        title="CPU Usage (%)"
+        plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
+
+        df = self.plot_data["gpu"]
+        title="GPU Usage (%)"
+        plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
 
         colours = ['blue','green','red', 'default']
+        ylims = None
+        labels = True
         if self.plot_data["lustre_read"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_read"].values))
             fac, unit = to_human(maxval, bytes=True)
-            plots.append(self._make_plot(self.plot_data["lustre_read"]*fac, title=f"Lustre Read Rate ({unit}B/s)", colours=colours, labels=True))
+            df = self.plot_data["lustre_read"]*fac
+            title=f"Lustre Read Rate ({unit}B/s)"
+            plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
 
         if self.plot_data["lustre_write"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_write"].values))
             fac, unit = to_human(maxval, bytes=True)
-            plots.append(self._make_plot(self.plot_data["lustre_write"]*fac, title=f"Lustre Write Rate ({unit}B/s)", colours=colours, labels=True))
+            df = self.plot_data["lustre_write"]*fac
+            title=f"Lustre Write Rate ({unit}B/s)"
+            plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
 
         if self.plot_data["lustre_iops"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_iops"].values))
             fac, unit = to_human(maxval)
-            plots.append(self._make_plot(self.plot_data["lustre_iops"]*fac, title=f"Lustre IOPS ({unit}ops/s)", colours=colours, labels=True))
+            df = self.plot_data["lustre_iops"]*fac
+            title=f"Lustre IOPS ({unit}ops/s)"
+            plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
 
         return plots
-
-    def _make_plot(self, df, title="", ylims=None, colours=['default'], labels=False):
-        if self.verbose:
-            print(f"Generating plot: {title}")
-
-        if df is None:
-            if self.verbose:
-                print(f"  No data available")
-            return None
-
-        df = pd.DataFrame(df)
-
-        colour = cycle(colours)
-        fac, tunit = human_time(df.index)
-        df.index = df.index * fac
-
-        plotext.clear_figure()
-        if ylims is not None:
-            plotext.ylim(*ylims)
-        plotext.plotsize(self.plot_width, self.plot_height)
-        plotext.theme('clear')
-        plotext.title(title)
-        plotext.xlabel(f'Time ({tunit})')
-
-        for column in df.columns.tolist():
-            # Resample to 2x the plot width, since the ascii characters used for plotting
-            # can represent roughly two points each
-            d = df[column].dropna()
-
-            # Skip empty data series after dropping nans
-            if len(d) == 0:
-                continue
-
-            x, y = resample(d.index.values, d.values, self.plot_width*2)
-            if labels:
-                label = column
-            else:
-                label = None
-            plotext.plot(x, y, color=next(colour), label=label)
-
-        # Save the plot as a string
-        return plotext.build()
 
     @staticmethod
     def get_raw_id(job_id):
