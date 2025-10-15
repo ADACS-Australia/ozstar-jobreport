@@ -106,10 +106,10 @@ class JobReport:
         Get the max memory usage of any node in the job in bytes
         """
 
-        if self.finished:
-            return self.db_data.stats.resident_memory
-        elif self.influxquery is not None:
+        if self.influxquery is not None:
             return self.influxquery.get_max_mem(self.influxid)
+        elif self.finished:
+            return self.db_data.stats.resident_memory
         else:
             return None
 
@@ -208,6 +208,8 @@ class JobReport:
         mem_usage_fraction = None
         if max_mem is not None and req_mem is not None:
             mem_usage_fraction = max_mem / req_mem
+            if self.influxquery is None:
+                warnings += ["Max mem may be larger if any sruns/jobsteps ran concurrently"]
         if mem_usage_fraction is not None and mem_usage_fraction < 0.5:
             warnings += ["Too much memory requested"]
 
