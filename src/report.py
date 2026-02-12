@@ -5,7 +5,7 @@ import numpy as np
 from functools import partial
 from tabulate import tabulate
 from utils import humansize, seconds_to_str, percentage_bar, to_human
-from plotting import make_ascii_plot
+from plotting import make_ascii_plot, interactive_plot
 
 
 UNFINISHED_STATES = ["PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"]
@@ -248,16 +248,20 @@ class JobReport:
         ylims = (0,100)
         labels = False
         colours = ['default']
+        c = ['black']
 
         df = self.plot_data["cpu"]
         title="CPU Usage (%)"
         plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
+        interactive_plot(df, pw, ph, title, ylims, c, labels, self.verbose, self.influxid)
 
         df = self.plot_data["gpu"]
         title="GPU Usage (%)"
         plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
+        interactive_plot(df, pw, ph, title, ylims, c, labels, self.verbose, self.influxid)
 
         colours = ['blue','green','red', 'default']
+        c = ['blue','green','red', 'black']
         ylims = None
         labels = True
         if self.plot_data["lustre_read"] is not None:
@@ -266,6 +270,7 @@ class JobReport:
             df = self.plot_data["lustre_read"]*fac
             title=f"Lustre Read Rate ({unit}B/s)"
             plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
+            interactive_plot(df, pw, ph, title, ylims, c, labels, self.verbose, self.influxid)
 
         if self.plot_data["lustre_write"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_write"].values))
@@ -273,6 +278,7 @@ class JobReport:
             df = self.plot_data["lustre_write"]*fac
             title=f"Lustre Write Rate ({unit}B/s)"
             plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
+            interactive_plot(df, pw, ph, title, ylims, c, labels, self.verbose, self.influxid)
 
         if self.plot_data["lustre_iops"] is not None:
             maxval = np.nanmax(abs(self.plot_data["lustre_iops"].values))
@@ -280,6 +286,7 @@ class JobReport:
             df = self.plot_data["lustre_iops"]*fac
             title=f"Lustre IOPS ({unit}ops/s)"
             plots.append(make_ascii_plot(df, pw, ph, title, ylims, colours, labels, self.verbose))
+            interactive_plot(df, pw, ph, title, ylims, c, labels, self.verbose, self.influxid)
 
         return plots
 
