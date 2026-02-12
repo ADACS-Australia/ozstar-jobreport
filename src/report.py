@@ -47,6 +47,7 @@ class JobReport:
             "home": "/home",
             "apps": "/apps",
             "images": "OS",
+            "aphid": "scratch",
         }
 
         self.report_data = {
