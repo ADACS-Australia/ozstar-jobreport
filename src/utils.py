@@ -18,7 +18,7 @@ def get_live_job_data(job_id, debug=False):
     try:
         job = pyslurm.Job.load(job_id)
         return job
-    except ValueError:
+    except KeyError:
         if debug:
             print_stderr(f"Warning: job {job_id} not found in Slurm controller")
         return None
