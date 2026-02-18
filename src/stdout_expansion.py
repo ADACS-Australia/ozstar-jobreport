@@ -83,13 +83,12 @@ For example, %%J becomes %J in scontrol, meaning the filename should have a
 literal '%J', but we cannot know this.
 """
 
-
-def expand_stdout(job_data):
-    filename = job_data.standard_output
+def expand_stdout(std_filename, jobid, batch_host):
+    filename = std_filename
     if "\\" in filename:
         return filename
-    filename = replace_jobid(filename, str(job_data.id))
-    filename = replace_hostname(filename, job_data.batch_host)
+    filename = replace_jobid(filename, str(jobid))
+    filename = replace_hostname(filename, batch_host)
     filename = replace_node_id(filename, node_id=0)
     filename = replace_stepid(filename, step_id="batch")
     filename = replace_taskid(filename, task_id=0)
