@@ -1,3 +1,6 @@
 conf.influxdb.toml
 __pycache__
 venv/
+build/
+*.so
+*.c

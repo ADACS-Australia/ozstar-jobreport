@@ -4,7 +4,16 @@ import traceback
 import sys
 
 import numpy as np
+from dataclasses import dataclass
 
+import jobload
+
+@dataclass
+class LiveJobData:
+    id: int
+    standard_output: str
+    batch_host: str
+    is_batch_job: bool
 
 def print_stderr(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -15,18 +24,28 @@ def get_live_job_data(job_id, debug=False):
     Get live job data from the Slurm controller (scontrol).
     This returns current job state, not historical data from the DB.
     """
+    result = None
     try:
         job = pyslurm.Job.load(job_id)
-        return job
+        result = LiveJobData(job.id, job.standard_output, job.batch_host, job.is_batch_job)
     except KeyError:
-        if debug:
-            print_stderr(f"Warning: job {job_id} not found in Slurm controller")
-        return None
+        result = KeyError
     except Exception:
-        if debug:
-            print_stderr("Warning: could not get live job data from Slurm controller")
-            print_stderr(traceback.format_exc())
-        return None
+        if debug: print_stderr(traceback.format_exc())
+
+    if result is KeyError:
+        if debug: print_stderr(f"Warning: pyslurm failed to load job {job_id} from Slurm controller. Trying fallback method...")
+        try:
+            job = jobload.load(job_id)
+            result = LiveJobData(job.id, job.standard_output, job.batch_host, job.is_batch_job)
+        except Exception:
+            if debug: print_stderr(traceback.format_exc())
+            result = None
+
+    if result is None and debug:
+        print_stderr("Warning: could not get live job data from Slurm controller")
+
+    return result
 
 def to_human(x, bytes=True):
     """Convert a number to a human readable format, handling both SI (base 1000) and byte (base 1024) suffixes"""

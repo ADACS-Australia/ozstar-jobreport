@@ -2,7 +2,7 @@ import re
 
 """
 
-%J = jobid.stepid of the running job. (e.g. "128.0")
+%J = jobid.stepid of the running job. (e.g. "128.0"). The stepid is only expanded for regular steps, not for special steps like "batch" or "extern".
 %N = short hostname. This will create a separate IO file per node.
 %n = Node identifier relative to current job (e.g. "0" is the first node of the running job) This will create a separate IO file per node.
 %s = stepid of the running job.

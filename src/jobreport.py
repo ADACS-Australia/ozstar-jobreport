@@ -39,7 +39,7 @@ def main(job_id, epilog=False, influx_config=None, debug=False, plot=False, plot
 
     if job_data is not None:
         if job_data.standard_output is not None:
-            stdout_file = expand_stdout(job_data.standard_output, job_data.id, job_data.batch_host)
+            stdout_file = expand_stdout(job_data.standard_output, raw_id, job_data.batch_host)
             stdout_file = Path(stdout_file)
         batch_host = job_data.batch_host
         is_batch_job = bool(job_data.is_batch_job)
