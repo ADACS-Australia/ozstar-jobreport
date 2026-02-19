@@ -5,10 +5,21 @@ A job reporting tool for the OzSTAR supercomputer that generates a summary of a 
 ## Prerequisites
 * Python 3.x
 * Required Python packages (install using pip):
-    * argparse
     * influxdb-client
     * pyslurm
     * tabulate
+    * Cython
+    * plotext
+    * numpy
+    * pandas
+
+## Install requirements
+```bash
+pip install -r requirements.txt
+```
+
+## Build cython extension
+Remember to build the Cython `jobload` extension by running `make`.
 
 ## Usage
 
