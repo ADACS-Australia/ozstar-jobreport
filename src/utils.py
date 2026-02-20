@@ -6,8 +6,6 @@ import sys
 import numpy as np
 from dataclasses import dataclass
 
-import jobload
-
 @dataclass
 class LiveJobData:
     id: int
@@ -36,6 +34,7 @@ def get_live_job_data(job_id, debug=False):
     if result is KeyError:
         if debug: print_stderr(f"Warning: pyslurm failed to load job {job_id} from Slurm controller. Trying fallback method...")
         try:
+            import jobload
             job = jobload.load(job_id)
             result = LiveJobData(job.id, job.standard_output, job.batch_host, job.is_batch_job)
         except Exception:
