@@ -19,7 +19,10 @@ pip install -r requirements.txt
 ```
 
 ## Build cython extension
-Remember to build the Cython `jobload` extension by running `make`.
+Remember to build the Cython `jobload` extension by running `make`. Use the environment variables `SLURM_LIB_DIR` and `SLURM_INCLUDE_DIR` to specify where the Slurm library and header files are located (if not in `/usr/lib64` and `/usr/include`). e.g.
+```bash
+SLURM_INCLUDE_DIR=/apps/slurm/latest/include/ SLURM_LIB_DIR=/apps/slurm/latest/lib/ make
+```
 
 ## Usage
 
