@@ -37,10 +37,12 @@ def build_package():
 
     pyslurm_version = pyslurm.__version__
     print(f"Detected PySlurm version - {pyslurm_version}")
-    if Version(slurm_version) != Version(pyslurm.__version__):
+    slurm_v = Version(slurm_version)
+    pyslurm_v = Version(pyslurm_version)
+    if (slurm_v.major, slurm_v.minor) != (pyslurm_v.major, pyslurm_v.minor):
         raise RuntimeError(
             "Slurm and PySlurm version mismatch: "
-            f"requires Slurm {pyslurm.__version__}, found {slurm_version}"
+            f"requires Slurm {pyslurm_version} (major.minor), found {slurm_version}"
         )
     else:
         print("OK")
